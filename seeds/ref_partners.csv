@@ -1,0 +1,5 @@
+partner_id,partner_name,partner_domain,partner_tier,partner_start_date
+P001,Acme Partners,acmepartners.com,Tier1,2023-01-01
+P002,Beta Consulting,betaconsulting.io,Tier2,2023-06-15
+P003,Gamma Advisors,gammaadvisors.com,Tier2,2024-02-01
+P004,Delta Group,deltagroup.co,Tier3,2024-09-10

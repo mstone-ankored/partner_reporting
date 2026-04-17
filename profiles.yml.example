@@ -1,0 +1,21 @@
+partner_reporting:
+  target: dev
+  outputs:
+    dev:
+      type: bigquery
+      method: service-account
+      project: "{{ env_var('GCP_PROJECT') }}"
+      dataset: partner_reporting_dev
+      keyfile: "{{ env_var('GCP_KEYFILE_PATH') }}"
+      location: US
+      threads: 4
+      timeout_seconds: 600
+    prod:
+      type: bigquery
+      method: service-account
+      project: "{{ env_var('GCP_PROJECT') }}"
+      dataset: partner_reporting
+      keyfile: "{{ env_var('GCP_KEYFILE_PATH') }}"
+      location: US
+      threads: 8
+      timeout_seconds: 900

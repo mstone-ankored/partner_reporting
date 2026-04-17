@@ -1,0 +1,92 @@
+name: partner_reporting
+version: 1.0.0
+config-version: 2
+
+profile: partner_reporting
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+analysis-paths: ["analyses"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+# Variables control which HubSpot pipeline properties map to partner attribution.
+# Override per-environment in profiles.yml or dbt run --vars.
+vars:
+  # The custom HubSpot contact property that directly names the referring partner.
+  # Most HubSpot instances have a custom "partner" or "partner_name" contact property
+  # populated either manually by the partner team or by form submission workflows.
+  partner_name_contact_property: "referring_partner_name"
+
+  # The HubSpot custom property (if any) that explicitly flags the inbound channel:
+  # e.g. "partner_email" vs "form". If null, we infer source_type from other signals.
+  partner_source_type_property: "partner_source_type"
+
+  # Names of HubSpot forms that are treated as partner-referral forms even when
+  # the submission does not include an explicit partner_name field.
+  partner_referral_form_names:
+    - "Partner Referral"
+    - "Partner Introduction"
+
+  # Form field keys that carry partner attribution. Any non-null value in these
+  # keys promotes the submission to source_type = 'form'.
+  partner_form_fields:
+    - "partner_name"
+    - "partner_referral"
+    - "referring_partner"
+
+  # HubSpot deal stages in the primary sales pipeline, ordered low → high.
+  # Used for stage-level conversion & drop-off analysis.
+  deal_stage_order:
+    - "discovery"
+    - "demo"
+    - "proposal"
+    - "negotiation"
+    - "closed_won"
+
+  # Terminal stages that indicate the deal is no longer in pipeline.
+  closed_won_stages: ["closed_won"]
+  closed_lost_stages: ["closed_lost"]
+
+  # Lifecycle stages used for lead-quality metrics.
+  mql_lifecycle_values: ["marketingqualifiedlead", "mql"]
+  sql_lifecycle_values: ["salesqualifiedlead", "sql"]
+  disqualified_lifecycle_values: ["other", "disqualified"]
+
+  # Lookback window for incremental models (days). First-run / full-refresh ignores this.
+  incremental_lookback_days: 14
+
+models:
+  partner_reporting:
+    staging:
+      +materialized: view
+      +schema: staging
+    intermediate:
+      +materialized: ephemeral
+      +schema: intermediate
+    marts:
+      +materialized: table
+      +schema: marts
+
+seeds:
+  partner_reporting:
+    +schema: seeds
+    ref_partners:
+      +column_types:
+        partner_id: string
+        partner_name: string
+        partner_domain: string
+        partner_tier: string
+        partner_start_date: date
+    partner_total_customers:
+      +column_types:
+        partner_id: string
+        partner_name: string
+        as_of_date: date
+        total_customer_count: integer

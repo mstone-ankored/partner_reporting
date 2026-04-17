@@ -1,0 +1,76 @@
+version: 2
+
+sources:
+  - name: hubspot
+    description: >
+      Raw HubSpot tables landed by Fivetran / Airbyte / custom pipeline.
+      Column names follow the Fivetran HubSpot connector convention; remap in
+      the staging models if you use a different extractor.
+    database: "{{ env_var('HUBSPOT_RAW_DATABASE', var('hubspot_raw_database', target.project)) }}"
+    schema: "{{ env_var('HUBSPOT_RAW_SCHEMA', 'hubspot') }}"
+    loader: fivetran
+    loaded_at_field: _fivetran_synced
+    freshness:
+      warn_after: {count: 6, period: hour}
+      error_after: {count: 24, period: hour}
+
+    tables:
+      - name: contact
+        identifier: contact
+        description: One row per HubSpot contact.
+        columns:
+          - name: id
+            tests: [unique, not_null]
+          - name: property_email
+          - name: property_createdate
+          - name: property_lifecyclestage
+          - name: property_hs_analytics_source
+          - name: property_hs_latest_source
+
+      - name: deal
+        identifier: deal
+        description: One row per HubSpot deal.
+        columns:
+          - name: deal_id
+            tests: [unique, not_null]
+          - name: property_amount
+          - name: property_createdate
+          - name: property_closedate
+          - name: property_dealstage
+          - name: property_pipeline
+
+      - name: deal_pipeline_stage
+        identifier: deal_pipeline_stage
+        description: Dimension of deal pipeline stages with display labels and probabilities.
+
+      - name: deal_stage_history
+        identifier: deal_stage_history
+        description: One row per stage transition per deal (flattened from property history).
+
+      - name: engagement
+        identifier: engagement
+        description: HubSpot engagements (emails, calls, meetings, notes, tasks).
+        columns:
+          - name: engagement_id
+            tests: [unique, not_null]
+
+      - name: engagement_contact
+        identifier: engagement_contact
+        description: Many-to-many linking engagements to contacts.
+
+      - name: contact_form
+        identifier: contact_form
+        description: >
+          Form submissions associated with contacts. One row per (contact, form, submission).
+
+      - name: form
+        identifier: form
+        description: HubSpot form dimension.
+
+      - name: deal_contact
+        identifier: deal_contact
+        description: Many-to-many linking deals to contacts, with is_primary flag.
+
+      - name: owner
+        identifier: owner
+        description: HubSpot owner (sales rep) dimension.

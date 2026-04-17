@@ -1,0 +1,94 @@
+version: 2
+
+models:
+  - name: partner_leads
+    description: |
+      One row per partner-sourced inbound lead (contact). Powers lead-volume,
+      lead-quality, and lead-source charts on the dashboard.
+    columns:
+      - name: contact_id
+        tests: [not_null, unique]
+      - name: partner_name
+        tests: [not_null]
+      - name: source_type
+        tests:
+          - not_null
+          - accepted_values: {values: ['partner_email', 'form']}
+      - name: lead_created_at
+        tests: [not_null]
+      - name: partner_id
+        description: FK to ref_partners. May be null if the partner is seen in HubSpot but not yet in the seed.
+
+  - name: partner_deals
+    description: One row per partner-attributed deal.
+    columns:
+      - name: deal_id
+        tests: [not_null, unique]
+      - name: partner_name
+        tests: [not_null]
+      - name: deal_stage
+        tests: [not_null]
+      - name: deal_status
+        tests:
+          - accepted_values: {values: ['won', 'lost', 'open']}
+
+  - name: partner_deal_stage_durations
+    description: Stage-level durations for partner deals.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [deal_id, deal_stage]
+
+  - name: partner_funnel_stage_conversion
+    description: Per-partner per-stage funnel conversion and drop-off rates.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [partner_id, deal_stage]
+    columns:
+      - name: stage_conversion_rate
+        tests:
+          - dbt_utils.accepted_range: {min_value: 0, max_value: 1, inclusive: true}
+      - name: next_stage_conversion_rate
+        tests:
+          - dbt_utils.accepted_range: {min_value: 0, max_value: 1, inclusive: true}
+
+  - name: partner_summary
+    description: Aggregated partner KPIs by period (month / quarter / all_time).
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [partner_id, period_type, period_start_date]
+
+  - name: partner_rep_performance
+    description: Rep-level performance on partner-sourced deals.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [partner_id, deal_owner_id]
+
+  - name: partner_penetration
+    description: Partner penetration (our customers / partner's total customers) over time.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [partner_id, as_of_date]
+    columns:
+      - name: penetration_rate
+        tests:
+          - dbt_utils.accepted_range: {min_value: 0, max_value: 100, inclusive: true}
+
+  - name: partner_rankings
+    description: Partner rankings and classification flags.
+    columns:
+      - name: partner_id
+        tests: [not_null, unique]
+      - name: volume_efficiency_quadrant
+        tests:
+          - accepted_values:
+              values:
+                - high_volume_high_conversion
+                - high_volume_low_conversion
+                - low_volume_high_conversion
+                - low_volume_low_conversion
+
+  - name: partner_lead_cohorts
+    description: Lead-creation-month cohorts per partner.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [partner_id, cohort_month]

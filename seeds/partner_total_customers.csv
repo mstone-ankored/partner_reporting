@@ -1,0 +1,11 @@
+partner_id,partner_name,as_of_date,total_customer_count
+P001,Acme Partners,2025-01-01,220
+P001,Acme Partners,2025-04-01,235
+P001,Acme Partners,2026-01-01,260
+P002,Beta Consulting,2025-01-01,85
+P002,Beta Consulting,2025-04-01,92
+P002,Beta Consulting,2026-01-01,110
+P003,Gamma Advisors,2025-04-01,40
+P003,Gamma Advisors,2026-01-01,55
+P004,Delta Group,2025-04-01,15
+P004,Delta Group,2026-01-01,22

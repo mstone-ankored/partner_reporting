@@ -1,0 +1,79 @@
+version: 2
+
+models:
+  - name: stg_hubspot__contacts
+    description: One row per HubSpot contact with standardized column names.
+    columns:
+      - name: contact_id
+        tests: [not_null, unique]
+      - name: contact_created_at
+        tests: [not_null]
+      - name: email
+
+  - name: stg_hubspot__deals
+    description: One row per HubSpot deal.
+    columns:
+      - name: deal_id
+        tests: [not_null, unique]
+      - name: deal_created_at
+        tests: [not_null]
+      - name: deal_status
+        tests:
+          - accepted_values:
+              values: ['won', 'lost', 'open']
+
+  - name: stg_hubspot__deal_stage_history
+    description: Deal stage transitions.
+    columns:
+      - name: deal_id
+        tests: [not_null]
+      - name: deal_stage
+        tests: [not_null]
+      - name: entered_at
+        tests: [not_null]
+
+  - name: stg_hubspot__engagements
+    description: HubSpot engagement records.
+    columns:
+      - name: engagement_id
+        tests: [not_null, unique]
+
+  - name: stg_hubspot__engagement_contacts
+    description: Many-to-many between engagements and contacts.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [engagement_id, contact_id]
+
+  - name: stg_hubspot__form_submissions
+    description: HubSpot form submissions, with partner-referral flag derived.
+    columns:
+      - name: submission_id
+        tests: [not_null, unique]
+      - name: contact_id
+        tests: [not_null]
+
+  - name: stg_hubspot__deal_contacts
+    description: Many-to-many between deals and contacts.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [deal_id, contact_id]
+
+  - name: stg_hubspot__owners
+    description: Sales reps / deal owners.
+    columns:
+      - name: owner_id
+        tests: [not_null, unique]
+
+  - name: stg_ref__partners
+    description: Canonical partner dimension from the ref_partners seed.
+    columns:
+      - name: partner_id
+        tests: [not_null, unique]
+      - name: partner_name
+        tests: [not_null]
+
+  - name: stg_ref__partner_total_customers
+    description: Time-series of partner total customer counts for penetration math.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [partner_id, as_of_date]

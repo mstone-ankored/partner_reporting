@@ -1,0 +1,43 @@
+version: 2
+
+models:
+  - name: int_partner_contact_attribution
+    description: >
+      One row per partner-sourced contact, with canonicalized partner_name,
+      source_type, and attribution_method audit trail.
+    columns:
+      - name: contact_id
+        tests: [not_null, unique]
+      - name: partner_name
+        tests: [not_null]
+      - name: source_type
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['partner_email', 'form']
+
+  - name: int_contact_first_touch
+    description: First engagement and first sales touch per contact.
+    columns:
+      - name: contact_id
+        tests: [not_null, unique]
+
+  - name: int_deal_primary_contact
+    description: One primary contact per deal.
+    columns:
+      - name: deal_id
+        tests: [not_null, unique]
+      - name: primary_contact_id
+        tests: [not_null]
+
+  - name: int_deal_stage_durations
+    description: Aggregated time spent in each stage per deal.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [deal_id, deal_stage]
+
+  - name: int_deal_sales_touches
+    description: Sales activity counts per deal, scoped to primary contact + deal lifetime.
+    columns:
+      - name: deal_id
+        tests: [not_null, unique]
