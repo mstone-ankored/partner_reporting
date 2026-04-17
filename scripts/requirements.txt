@@ -1,0 +1,13 @@
+requests>=2.31,<3
+SQLAlchemy>=2.0,<3
+# Warehouse drivers — install the ones you use.
+# BigQuery
+sqlalchemy-bigquery>=1.9
+google-cloud-bigquery>=3.14
+# Snowflake
+# snowflake-sqlalchemy>=1.5
+# snowflake-connector-python>=3.6
+# Postgres / Redshift
+psycopg2-binary>=2.9
+# DuckDB (useful for local dev)
+duckdb-engine>=0.11

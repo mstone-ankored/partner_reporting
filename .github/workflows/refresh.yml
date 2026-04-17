@@ -1,0 +1,91 @@
+name: refresh-partner-reporting
+
+# Schedules a dbt build + Zoho Analytics sync every 30 min. This is the
+# backbone of the "live dashboard" — when this runs, Zoho sees fresh data.
+#
+# Secrets required (Settings → Secrets and variables → Actions):
+#   WAREHOUSE_URL           SQLAlchemy URL (used by the Zoho sync step)
+#   DBT_PROFILES            (optional) contents of profiles.yml; rendered to ~/.dbt/profiles.yml
+#   GCP_SA_KEY              (BigQuery only) service-account JSON
+#   ZOHO_CLIENT_ID          From Zoho API Console
+#   ZOHO_CLIENT_SECRET
+#   ZOHO_REFRESH_TOKEN
+#   ZANALYTICS_ORGID
+#   ZOHO_WORKSPACE_ID
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"      # every 30 minutes
+  workflow_dispatch:             # manual trigger from the Actions tab
+  push:
+    branches: [main]
+    paths:
+      - "models/**"
+      - "macros/**"
+      - "seeds/**"
+      - "dbt_project.yml"
+
+concurrency:
+  group: refresh-partner-reporting
+  cancel-in-progress: false      # don't cancel an in-flight sync
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DBT_PROFILES_DIR: ${{ github.workspace }}/.dbt
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - run: pip install -r scripts/requirements.txt dbt-bigquery
+
+      # -- Warehouse auth (BigQuery example; swap for your warehouse) --------
+      - name: Configure dbt profile
+        run: |
+          mkdir -p .dbt
+          cat > .dbt/profiles.yml <<EOF
+          partner_reporting:
+            target: prod
+            outputs:
+              prod:
+                type: bigquery
+                method: service-account-json
+                project: ${{ secrets.GCP_PROJECT }}
+                dataset: partner_reporting_marts
+                keyfile_json: ${{ secrets.GCP_SA_KEY }}
+                location: US
+                threads: 8
+                timeout_seconds: 900
+          EOF
+
+      - name: dbt deps
+        run: dbt deps
+
+      - name: dbt build
+        run: dbt build --target prod
+
+      - name: Sync to Zoho Analytics
+        env:
+          WAREHOUSE_URL:         ${{ secrets.WAREHOUSE_URL }}
+          WAREHOUSE_MART_SCHEMA: partner_reporting_marts
+          ZOHO_REGION:           ${{ vars.ZOHO_REGION || 'com' }}
+          ZOHO_CLIENT_ID:        ${{ secrets.ZOHO_CLIENT_ID }}
+          ZOHO_CLIENT_SECRET:    ${{ secrets.ZOHO_CLIENT_SECRET }}
+          ZOHO_REFRESH_TOKEN:    ${{ secrets.ZOHO_REFRESH_TOKEN }}
+          ZANALYTICS_ORGID:      ${{ secrets.ZANALYTICS_ORGID }}
+          ZOHO_WORKSPACE_ID:     ${{ secrets.ZOHO_WORKSPACE_ID }}
+        run: python scripts/zoho_sync.py
+
+      - name: Upload dbt artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dbt-target
+          path: target/
+          retention-days: 7

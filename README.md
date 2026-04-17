@@ -48,18 +48,30 @@ marts/     ── partner_leads          (1 row per lead)
 ## Running locally
 
 ```bash
-pip install dbt-bigquery      # or dbt-snowflake / dbt-postgres
-cp profiles.yml.example ~/.dbt/profiles.yml   # fill in credentials
-
-dbt deps
-dbt seed         # loads ref_partners + partner_total_customers
-dbt build        # runs models + tests in dependency order
+make install                                  # dbt + Python deps
+cp profiles.yml.example ~/.dbt/profiles.yml   # fill in warehouse creds
+make build                                    # seed + run + test
 ```
 
-For a live dashboard, schedule `dbt build --select state:modified+ source:hubspot+`
-every 30–60 min. The mart tables `partner_leads` and `partner_deals` are
-materialized `incremental` with `incremental_strategy: merge`, so re-runs are
+For a live dashboard, schedule `make refresh` every 30–60 min — that runs
+`dbt build` and then pushes the mart tables to Zoho Analytics. The mart tables
+`partner_leads` / `partner_deals` are incremental with `merge`, so re-runs are
 cheap and idempotent.
+
+## Live dashboard in Zoho Analytics
+
+Two paths — see [`docs/zoho_analytics_setup.md`](docs/zoho_analytics_setup.md)
+for the full walkthrough.
+
+- **Path A — Zoho native warehouse connector** (recommended for BigQuery,
+  Snowflake, Redshift, Postgres). Point Zoho at the `partner_reporting_marts`
+  schema; it syncs on its own schedule. Zero code.
+- **Path B — API push**. Run `make bootstrap` once, then `make sync` (or let
+  the GitHub Actions workflow at `.github/workflows/refresh.yml` do it every
+  30 min). Uses `scripts/zoho_sync.py` to upsert via Zoho's Bulk Import API.
+
+[`docs/dashboard_setup_zoho.md`](docs/dashboard_setup_zoho.md) walks through
+building each dashboard page in Zoho once the tables are syncing.
 
 ## Adding or updating data
 
@@ -77,3 +89,8 @@ cheap and idempotent.
   encoded (lifecycle stage mapping, attribution priority, edge cases).
 - [`docs/dashboard_structure.md`](docs/dashboard_structure.md) — proposed
   dashboard pages, charts, and the tables each chart binds to.
+- [`docs/zoho_analytics_setup.md`](docs/zoho_analytics_setup.md) — end-to-end
+  Zoho Analytics connection guide (native connector or API push).
+- [`docs/dashboard_setup_zoho.md`](docs/dashboard_setup_zoho.md) — Zoho-specific
+  dashboard build recipes.
+- [`docs/metrics_glossary.md`](docs/metrics_glossary.md) — exact metric formulas.
