@@ -12,12 +12,12 @@ renamed as (
     select
         engagement_id,
         lower(engagement_type)                                      as engagement_type,
-        safe_cast(engagement_timestamp as timestamp)                as engaged_at,
+        {{ safe_cast('engagement_timestamp', 'timestamp') }}        as engaged_at,
         owner_id                                                    as engagement_owner_id,
         engagement_source                                           as engagement_source,
         lower(email_metadata_direction)                             as email_direction,  -- 'incoming'|'outgoing'
         lower(email_metadata_from_email)                            as email_from_address,
-        regexp_extract(lower(email_metadata_from_email), r'@([^@]+)$') as email_from_domain,
+        {{ regex_extract_group('lower(email_metadata_from_email)', '@([^@]+)$') }} as email_from_domain,
         email_metadata_subject                                      as email_subject,
         _fivetran_synced                                            as _synced_at
     from source

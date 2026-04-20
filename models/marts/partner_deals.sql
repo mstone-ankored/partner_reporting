@@ -17,8 +17,7 @@
 with deals as (
     select * from {{ ref('stg_hubspot__deals') }}
     {% if is_incremental() %}
-      where _synced_at >= timestamp_sub(current_timestamp(),
-                                        interval {{ var('incremental_lookback_days') }} day)
+      where _synced_at >= now() - interval '{{ var('incremental_lookback_days') }} days'
     {% endif %}
 ),
 
@@ -90,13 +89,13 @@ select
 
     -- Dates
     d.deal_created_at,
-    date(d.deal_created_at)                           as deal_created_date,
-    date_trunc(date(d.deal_created_at), month)        as deal_created_month,
-    date_trunc(date(d.deal_created_at), quarter)      as deal_created_quarter,
+    d.deal_created_at::date                           as deal_created_date,
+    date_trunc('month',   d.deal_created_at)::date    as deal_created_month,
+    date_trunc('quarter', d.deal_created_at)::date    as deal_created_quarter,
     d.deal_close_date,
-    date(d.deal_close_date)                           as deal_close_date_d,
-    date_trunc(date(d.deal_close_date), month)        as deal_close_month,
-    date_trunc(date(d.deal_close_date), quarter)      as deal_close_quarter,
+    d.deal_close_date::date                           as deal_close_date_d,
+    date_trunc('month',   d.deal_close_date)::date    as deal_close_month,
+    date_trunc('quarter', d.deal_close_date)::date    as deal_close_quarter,
     d.deal_closed_won_at,
     c.contact_created_at,
 
@@ -106,10 +105,9 @@ select
     d.deal_status,
 
     -- Durations (days)
-    safe_divide(timestamp_diff(d.deal_created_at, c.contact_created_at, second), 86400.0)
+    {{ safe_divide(timestamp_diff_seconds('d.deal_created_at', 'c.contact_created_at'), '86400.0') }}
                                                       as days_contact_to_deal,
-    safe_divide(timestamp_diff(coalesce(d.deal_closed_won_at, d.deal_close_date, current_timestamp()),
-                               d.deal_created_at, second), 86400.0)
+    {{ safe_divide(timestamp_diff_seconds('coalesce(d.deal_closed_won_at, d.deal_close_date, now())', 'd.deal_created_at'), '86400.0') }}
                                                       as time_to_close_days,
 
     -- Activity

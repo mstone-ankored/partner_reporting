@@ -12,8 +12,8 @@ renamed as (
     select
         deal_id                                                     as deal_id,
         lower(stage_id)                                             as deal_stage,
-        safe_cast(entered_at as timestamp)                          as entered_at,
-        safe_cast(exited_at as timestamp)                           as exited_at
+        entered_at::timestamp                                       as entered_at,
+        exited_at::timestamp                                        as exited_at
     from source
 ),
 
@@ -23,9 +23,8 @@ with_duration as (
         deal_stage,
         entered_at,
         exited_at,
-        coalesce(exited_at, current_timestamp())                    as effective_exited_at,
-        timestamp_diff(coalesce(exited_at, current_timestamp()),
-                       entered_at, second)                          as seconds_in_stage
+        coalesce(exited_at, now())                                  as effective_exited_at,
+        {{ timestamp_diff_seconds('coalesce(exited_at, now())', 'entered_at') }} as seconds_in_stage
     from renamed
     where entered_at is not null
 )
@@ -37,5 +36,5 @@ select
     exited_at,
     effective_exited_at,
     seconds_in_stage,
-    safe_divide(seconds_in_stage, 86400)                             as days_in_stage
+    {{ safe_divide('seconds_in_stage', '86400') }}                   as days_in_stage
 from with_duration

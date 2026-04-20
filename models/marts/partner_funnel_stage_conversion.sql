@@ -25,11 +25,10 @@ with stage_entries as (
 ),
 
 stage_order_lookup as (
-    select * from unnest([
-        {% for s in stages %}
-        struct('{{ s }}' as stage_name, {{ loop.index }} as stage_order){% if not loop.last %},{% endif %}
-        {% endfor %}
-    ])
+    {% for s in stages %}
+    select '{{ s }}' as stage_name, {{ loop.index }} as stage_order
+    {% if not loop.last %}union all{% endif %}
+    {% endfor %}
 ),
 
 entries_with_order as (
@@ -47,7 +46,7 @@ max_stage_per_deal as (
         partner_name,
         deal_id,
         max(stage_order) as max_stage_order,
-        max(is_closed_won) as is_closed_won
+        bool_or(is_closed_won) as is_closed_won
     from entries_with_order
     where stage_order is not null
     group by 1, 2, 3
@@ -94,11 +93,11 @@ select
     ps.deals_entered,
     ps.deals_advanced,
     ps.deals_closed_won,
-    safe_divide(ps.deals_advanced, nullif(ps.deals_entered, 0))                    as stage_conversion_rate,
-    safe_divide(ps.deals_closed_won, nullif(ps.deals_entered, 0))                  as stage_to_won_rate,
+    {{ safe_divide('ps.deals_advanced',   'ps.deals_entered') }}                        as stage_conversion_rate,
+    {{ safe_divide('ps.deals_closed_won', 'ps.deals_entered') }}                        as stage_to_won_rate,
     nsc.deals_entered_next_stage,
-    safe_divide(nsc.deals_entered_next_stage, nullif(nsc.deals_entered_this_stage, 0)) as next_stage_conversion_rate,
-    1 - safe_divide(nsc.deals_entered_next_stage, nullif(nsc.deals_entered_this_stage, 0)) as drop_off_rate
+    {{ safe_divide('nsc.deals_entered_next_stage', 'nsc.deals_entered_this_stage') }}   as next_stage_conversion_rate,
+    1 - {{ safe_divide('nsc.deals_entered_next_stage', 'nsc.deals_entered_this_stage') }} as drop_off_rate
 from per_stage ps
 left join next_stage_conv nsc
   on ps.partner_id = nsc.partner_id

@@ -19,7 +19,7 @@ joined as (
         s.contact_id,
         s.form_id,
         f.name                                                      as form_name,
-        safe_cast(s.submitted_at as timestamp)                      as submitted_at,
+        {{ safe_cast('s.submitted_at', 'timestamp') }}              as submitted_at,
         s.page_url                                                  as submission_page_url,
         s.submission_values                                         as submission_values_raw
     from source s
@@ -39,16 +39,16 @@ extracted as (
         -- of field names and coalesce the first non-null value.
         coalesce(
             {% for f in var('partner_form_fields') -%}
-                nullif(trim(json_value(submission_values_raw, '$.{{ f }}')), ''){% if not loop.last %},{% endif %}
+                nullif(trim({{ json_value('submission_values_raw', f) }}), ''){% if not loop.last %},{% endif %}
             {% endfor %}
         ) as partner_name_from_form,
         -- Generic firmographic fields frequently collected on forms.
-        nullif(json_value(submission_values_raw, '$.company'), '')        as form_company_name,
-        nullif(json_value(submission_values_raw, '$.company_size'), '')   as form_company_size,
-        nullif(json_value(submission_values_raw, '$.numberofemployees'), '') as form_num_employees,
-        nullif(json_value(submission_values_raw, '$.industry'), '')       as form_industry,
-        nullif(json_value(submission_values_raw, '$.country'), '')        as form_country,
-        nullif(json_value(submission_values_raw, '$.use_case'), '')       as form_use_case
+        nullif({{ json_value('submission_values_raw', 'company') }}, '')            as form_company_name,
+        nullif({{ json_value('submission_values_raw', 'company_size') }}, '')       as form_company_size,
+        nullif({{ json_value('submission_values_raw', 'numberofemployees') }}, '')  as form_num_employees,
+        nullif({{ json_value('submission_values_raw', 'industry') }}, '')           as form_industry,
+        nullif({{ json_value('submission_values_raw', 'country') }}, '')            as form_country,
+        nullif({{ json_value('submission_values_raw', 'use_case') }}, '')           as form_use_case
     from joined
 ),
 

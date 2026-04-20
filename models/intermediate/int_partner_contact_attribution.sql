@@ -141,7 +141,7 @@ unioned as (
         'declared_property'                              as attribution_method,
         1                                                as priority,
         cast(null as timestamp)                          as evidence_at,
-        cast(null as string)                             as evidence_id
+        cast(null as text)                             as evidence_id
     from declared_property
 
     union all
@@ -180,7 +180,7 @@ unioned as (
         'referral_original_source'                       as attribution_method,
         4                                                as priority,
         cast(null as timestamp)                          as evidence_at,
-        cast(null as string)                             as evidence_id
+        cast(null as text)                             as evidence_id
     from referral_source
 ),
 

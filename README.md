@@ -1,46 +1,40 @@
 # Partner Performance Reporting
 
 Production-ready analytics stack that turns raw HubSpot data (contacts, deals,
-engagements, form submissions) into partner-level performance tables that
-power a live Zoho Analytics dashboard.
+engagements, form submissions) into partner-level performance tables, a live
+interactive web dashboard, and a configurable push of rolled-up metrics into
+Notion.
 
-Two implementations ship in this repo — pick one:
+## Stack
 
-1. **Zoho-native** (recommended, no warehouse) — Zoho Analytics' HubSpot
-   connector pulls raw data; the `zoho/query_tables/*.sql` files are Query
-   Tables you create in Zoho that layer the same semantics. No code runs
-   outside Zoho. See [`zoho/README.md`](zoho/README.md).
-2. **dbt + warehouse** — production dbt project (BigQuery / Snowflake /
-   Postgres / Redshift) plus a Python sync that pushes mart tables to Zoho.
-   Use this when you outgrow Zoho Query Tables or need to blend HubSpot with
-   other systems. See [`docs/zoho_analytics_setup.md`](docs/zoho_analytics_setup.md).
-
-Both produce mart tables with identical names, columns, and semantics, so the
-dashboard built on one works unchanged on the other.
+- **Warehouse** — [Neon](https://neon.tech) (serverless Postgres), provisioned
+  through the Vercel Neon integration.
+- **Transformations** — dbt (`dbt-postgres`) — staging → intermediate → marts.
+- **Dashboard** — Next.js app in [`web/`](web/), deployed to Vercel. Reads
+  directly from Neon. Handles auth, drilldowns, forecasting, and Notion sync
+  configuration.
+- **Notion push** — `scripts/notion_sync.py` reads a per-table config saved by
+  the web app and upserts selected rows into Notion databases.
 
 ## Pipeline at a glance
 
 ```
-HubSpot (raw, landed by Fivetran/Airbyte)
+HubSpot (raw, landed by Fivetran/Airbyte into Neon)
         │
         ▼
-staging/   ── stg_hubspot__contacts, stg_hubspot__deals, stg_hubspot__engagements, …
+staging/    ── stg_hubspot__contacts, stg_hubspot__deals, …
         │
         ▼
-intermediate/ ── int_partner_contact_attribution, int_contact_first_touch,
-                 int_deal_primary_contact, int_deal_stage_durations,
-                 int_deal_sales_touches
+intermediate/ ── int_partner_contact_attribution, int_deal_stage_durations, …
         │
         ▼
-marts/     ── partner_leads          (1 row per lead)
-              partner_deals          (1 row per deal)
-              partner_summary        (KPIs by partner × period)
-              partner_funnel_stage_conversion
-              partner_deal_stage_durations
-              partner_rep_performance
-              partner_rankings
-              partner_penetration
-              partner_lead_cohorts
+marts/      ── partner_leads, partner_deals, partner_summary,
+               partner_funnel_stage_conversion, partner_deal_stage_durations,
+               partner_rep_performance, partner_rankings, partner_penetration,
+               partner_lead_cohorts
+        │
+        ├──▶ Next.js web app on Vercel  (interactive dashboard + forecasts)
+        └──▶ scripts/notion_sync.py     (selected rows → Notion databases)
 ```
 
 ## What the dashboard can answer
@@ -52,49 +46,35 @@ marts/     ── partner_leads          (1 row per lead)
 | Where do partner leads break in the funnel?         | `partner_funnel_stage_conversion`          |
 | Which partners should we invest in vs deprioritize? | `partner_rankings.volume_efficiency_quadrant` |
 | How does a partner's revenue trend?                 | `partner_summary` (period_type = 'month')  |
+| What should next quarter look like per partner?     | forecast page (built on `partner_summary`) |
 | Which reps close partner deals best?                | `partner_rep_performance`                  |
 | How deeply have we penetrated a partner's book?     | `partner_penetration`                      |
 
-## Zoho-native path (recommended)
+## Quickstart
 
-```text
-HubSpot ──▶ Zoho HubSpot connector ──▶ stg_* Query Tables ──▶ int_* ──▶ partner_*
-                                                                          │
-                                                                          ▼
-                                                                   Zoho dashboards
-```
+1. **Provision Neon via Vercel.** See [`docs/vercel_neon_setup.md`](docs/vercel_neon_setup.md).
+2. **Build the marts.**
+   ```bash
+   make install                                  # dbt + Python deps
+   cp profiles.yml.example ~/.dbt/profiles.yml   # fill in Neon creds
+   make build                                    # seed + run + test
+   ```
+3. **Run the web app locally.**
+   ```bash
+   cd web && npm install && npm run dev
+   ```
+   Full walkthrough: [`docs/web_app_setup.md`](docs/web_app_setup.md).
+4. **Wire up Notion (optional).** See [`docs/notion_setup.md`](docs/notion_setup.md).
 
-Full walkthrough: [`zoho/README.md`](zoho/README.md). ~30 min end to end:
-connect HubSpot, upload two seed CSVs, create 18 Query Tables in order, build
-dashboards using [`docs/dashboard_setup_zoho.md`](docs/dashboard_setup_zoho.md).
+## Scheduled refresh
 
-## dbt + warehouse path
+`.github/workflows/refresh.yml` runs every 30 min:
+1. `dbt build` against Neon.
+2. `python scripts/notion_sync.py` — pushes rows selected in the web app's
+   Notion sync settings into the configured Notion databases.
 
-```bash
-make install                                  # dbt + Python deps
-cp profiles.yml.example ~/.dbt/profiles.yml   # fill in warehouse creds
-make build                                    # seed + run + test
-```
-
-For a live dashboard, schedule `make refresh` every 30–60 min — that runs
-`dbt build` and then pushes the mart tables to Zoho Analytics. The mart tables
-`partner_leads` / `partner_deals` are incremental with `merge`, so re-runs are
-cheap and idempotent.
-
-## Live dashboard in Zoho Analytics
-
-Two paths — see [`docs/zoho_analytics_setup.md`](docs/zoho_analytics_setup.md)
-for the full walkthrough.
-
-- **Path A — Zoho native warehouse connector** (recommended for BigQuery,
-  Snowflake, Redshift, Postgres). Point Zoho at the `partner_reporting_marts`
-  schema; it syncs on its own schedule. Zero code.
-- **Path B — API push**. Run `make bootstrap` once, then `make sync` (or let
-  the GitHub Actions workflow at `.github/workflows/refresh.yml` do it every
-  30 min). Uses `scripts/zoho_sync.py` to upsert via Zoho's Bulk Import API.
-
-[`docs/dashboard_setup_zoho.md`](docs/dashboard_setup_zoho.md) walks through
-building each dashboard page in Zoho once the tables are syncing.
+The web app queries Neon live, so the dashboard is always fresh once dbt
+finishes; Notion is eventual-consistency on the 30-min cadence.
 
 ## Adding or updating data
 
@@ -106,14 +86,10 @@ building each dashboard page in Zoho once the tables are syncing.
 
 ## Documentation
 
-- [`docs/data_model.md`](docs/data_model.md) — ER diagram, column reference,
-  join keys.
-- [`docs/assumptions.md`](docs/assumptions.md) — every business rule we
-  encoded (lifecycle stage mapping, attribution priority, edge cases).
-- [`docs/dashboard_structure.md`](docs/dashboard_structure.md) — proposed
-  dashboard pages, charts, and the tables each chart binds to.
-- [`docs/zoho_analytics_setup.md`](docs/zoho_analytics_setup.md) — end-to-end
-  Zoho Analytics connection guide (native connector or API push).
-- [`docs/dashboard_setup_zoho.md`](docs/dashboard_setup_zoho.md) — Zoho-specific
-  dashboard build recipes.
+- [`docs/data_model.md`](docs/data_model.md) — ER diagram, column reference, join keys.
+- [`docs/assumptions.md`](docs/assumptions.md) — business rules encoded in the models.
+- [`docs/dashboard_structure.md`](docs/dashboard_structure.md) — dashboard pages and the tables each chart binds to.
 - [`docs/metrics_glossary.md`](docs/metrics_glossary.md) — exact metric formulas.
+- [`docs/vercel_neon_setup.md`](docs/vercel_neon_setup.md) — provision Neon via Vercel, deploy the app.
+- [`docs/web_app_setup.md`](docs/web_app_setup.md) — local dev for the Next.js app.
+- [`docs/notion_setup.md`](docs/notion_setup.md) — create Notion integration + databases, configure sync.

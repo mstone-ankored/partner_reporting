@@ -28,13 +28,11 @@ agg_per_stage as (
 deal_totals as (
     select
         d.deal_id,
-        timestamp_diff(coalesce(d.deal_closed_won_at, d.deal_close_date, current_timestamp()),
-                       d.deal_created_at, second)                    as seconds_to_close,
-        safe_divide(
-            timestamp_diff(coalesce(d.deal_closed_won_at, d.deal_close_date, current_timestamp()),
-                           d.deal_created_at, second),
-            86400.0
-        ) as days_to_close
+        {{ timestamp_diff_seconds('coalesce(d.deal_closed_won_at, d.deal_close_date, now())', 'd.deal_created_at') }} as seconds_to_close,
+        {{ safe_divide(
+            timestamp_diff_seconds('coalesce(d.deal_closed_won_at, d.deal_close_date, now())', 'd.deal_created_at'),
+            '86400.0'
+        ) }} as days_to_close
     from deals d
 )
 
