@@ -6,7 +6,7 @@ sources:
       Raw HubSpot tables landed by Fivetran / Airbyte / custom pipeline.
       Column names follow the Fivetran HubSpot connector convention; remap in
       the staging models if you use a different extractor.
-    database: "{{ env_var('HUBSPOT_RAW_DATABASE', var('hubspot_raw_database', target.project)) }}"
+    database: "{{ env_var('HUBSPOT_RAW_DATABASE', target.database) }}"
     schema: "{{ env_var('HUBSPOT_RAW_SCHEMA', 'hubspot') }}"
     loader: fivetran
     loaded_at_field: _fivetran_synced

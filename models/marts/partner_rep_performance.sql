@@ -22,10 +22,10 @@ select
     count(distinct case when is_closed_won then deal_id end)         as deals_won,
     count(distinct case when is_closed and not is_closed_won then deal_id end) as deals_lost,
     count(distinct case when not is_closed then deal_id end)         as deals_open,
-    safe_divide(
-        count(distinct case when is_closed_won then deal_id end),
-        nullif(count(distinct deal_id), 0)
-    )                                                                as win_rate,
+    {{ safe_divide(
+        'count(distinct case when is_closed_won then deal_id end)',
+        'count(distinct deal_id)'
+    ) }}                                                             as win_rate,
     sum(case when is_closed_won then amount else 0 end)              as revenue_closed_won,
     avg(case when is_closed_won then amount end)                     as avg_deal_size,
     avg(case when is_closed_won then time_to_close_days end)         as avg_cycle_days,

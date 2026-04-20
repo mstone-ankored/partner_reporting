@@ -40,7 +40,7 @@ joined as (
     left join contact_engagements ce
       on ce.contact_id = d.primary_contact_id
      and ce.engaged_at >= d.deal_created_at
-     and ce.engaged_at <= coalesce(d.deal_close_date, current_timestamp())
+     and ce.engaged_at <= coalesce(d.deal_close_date, now())
 ),
 
 agg as (

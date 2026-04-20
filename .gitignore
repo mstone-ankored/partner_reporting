@@ -7,3 +7,13 @@ profiles.yml
 .venv/
 __pycache__/
 .DS_Store
+
+# Next.js / web app
+web/node_modules/
+web/.next/
+web/.vercel/
+web/.env
+web/.env.local
+web/next-env.d.ts
+web/*.tsbuildinfo
+

@@ -33,19 +33,19 @@ penetration as (
 -- -----------------------------------------------------------------------------
 partner_periods as (
     select partner_id, partner_name, 'month'   as period_type, lead_created_month   as period_start_date from leads
-    union distinct
+    union
     select partner_id, partner_name, 'quarter' as period_type, lead_created_quarter as period_start_date from leads
-    union distinct
+    union
     select partner_id, partner_name, 'month'   as period_type, deal_created_month   as period_start_date from deals
-    union distinct
+    union
     select partner_id, partner_name, 'quarter' as period_type, deal_created_quarter as period_start_date from deals
-    union distinct
+    union
     select partner_id, partner_name, 'month'   as period_type, deal_close_month     as period_start_date from deals where deal_close_month is not null
-    union distinct
+    union
     select partner_id, partner_name, 'quarter' as period_type, deal_close_quarter   as period_start_date from deals where deal_close_quarter is not null
-    union distinct
+    union
     select partner_id, partner_name, 'all_time' as period_type, cast(null as date) as period_start_date from leads
-    union distinct
+    union
     select partner_id, partner_name, 'all_time' as period_type, cast(null as date) as period_start_date from deals
 ),
 
@@ -139,7 +139,7 @@ period_totals as (
         from lead_metrics lm
         left join deal_create_metrics dcm using (partner_id, partner_name, period_type, period_start_date)
         left join deal_close_metrics  dclm using (partner_id, partner_name, period_type, period_start_date)
-    )
+    ) joined
     group by 1, 2
 ),
 
@@ -149,8 +149,13 @@ period_totals as (
 -- -----------------------------------------------------------------------------
 latest_penetration as (
     select partner_id, partner_name, penetration_rate, total_customer_count, our_customer_count
-    from penetration
-    qualify row_number() over (partition by partner_id order by as_of_date desc) = 1
+    from (
+        select
+            penetration.*,
+            row_number() over (partition by partner_id order by as_of_date desc) as _rn
+        from penetration
+    ) ranked
+    where _rn = 1
 )
 
 select
@@ -168,17 +173,17 @@ select
     coalesce(lm.leads_reached_mql, 0)                                        as leads_reached_mql,
     coalesce(lm.leads_reached_sql, 0)                                        as leads_reached_sql,
     coalesce(lm.leads_disqualified, 0)                                       as leads_disqualified,
-    safe_divide(lm.leads_reached_mql,      nullif(lm.total_leads, 0))        as mql_rate,
-    safe_divide(lm.leads_reached_sql,      nullif(lm.total_leads, 0))        as sql_rate,
-    safe_divide(lm.leads_disqualified,     nullif(lm.total_leads, 0))        as disqualified_rate,
+    {{ safe_divide('lm.leads_reached_mql',  'lm.total_leads') }}              as mql_rate,
+    {{ safe_divide('lm.leads_reached_sql',  'lm.total_leads') }}              as sql_rate,
+    {{ safe_divide('lm.leads_disqualified', 'lm.total_leads') }}              as disqualified_rate,
 
     -- Funnel
     coalesce(dcm.total_deals_created, 0)                                     as total_deals_created,
-    safe_divide(dcm.total_deals_created,   nullif(lm.total_leads, 0))        as lead_to_deal_rate,
+    {{ safe_divide('dcm.total_deals_created', 'lm.total_leads') }}            as lead_to_deal_rate,
     coalesce(dclm.deals_closed_won, 0)                                       as deals_closed_won,
     coalesce(dclm.deals_closed_lost, 0)                                      as deals_closed_lost,
-    safe_divide(dclm.deals_closed_won,     nullif(dcm.total_deals_created, 0)) as deal_to_won_rate,
-    safe_divide(dclm.deals_closed_won,     nullif(lm.total_leads, 0))        as lead_to_won_rate,
+    {{ safe_divide('dclm.deals_closed_won', 'dcm.total_deals_created') }}    as deal_to_won_rate,
+    {{ safe_divide('dclm.deals_closed_won', 'lm.total_leads') }}              as lead_to_won_rate,
 
     -- Velocity / efficiency
     lm.avg_hours_to_first_sales_touch,
@@ -190,13 +195,13 @@ select
     coalesce(dclm.revenue_closed_won, 0)                                     as revenue_closed_won,
     dclm.avg_deal_size,
     dclm.median_deal_size,
-    safe_divide(dclm.revenue_closed_won,   nullif(lm.total_leads, 0))         as revenue_per_lead,
-    safe_divide(dclm.revenue_closed_won,   nullif(dclm.deals_closed_won, 0))  as revenue_per_closed_won_deal,
+    {{ safe_divide('dclm.revenue_closed_won', 'lm.total_leads') }}            as revenue_per_lead,
+    {{ safe_divide('dclm.revenue_closed_won', 'dclm.deals_closed_won') }}    as revenue_per_closed_won_deal,
 
     -- Share of total (partner contribution)
-    safe_divide(lm.total_leads,           nullif(pt.all_partners_leads, 0))   as share_of_total_leads,
-    safe_divide(dcm.total_deals_created,  nullif(pt.all_partners_deals, 0))   as share_of_total_deals,
-    safe_divide(dclm.revenue_closed_won,  nullif(pt.all_partners_revenue, 0)) as share_of_total_revenue,
+    {{ safe_divide('lm.total_leads',          'pt.all_partners_leads') }}    as share_of_total_leads,
+    {{ safe_divide('dcm.total_deals_created', 'pt.all_partners_deals') }}    as share_of_total_deals,
+    {{ safe_divide('dclm.revenue_closed_won', 'pt.all_partners_revenue') }}  as share_of_total_revenue,
 
     -- Penetration (static snapshot — same value across periods)
     lp.total_customer_count                                                  as partner_total_customers,

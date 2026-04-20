@@ -25,8 +25,7 @@ with attribution as (
 contacts as (
     select * from {{ ref('stg_hubspot__contacts') }}
     {% if is_incremental() %}
-      where _synced_at >= timestamp_sub(current_timestamp(),
-                                        interval {{ var('incremental_lookback_days') }} day)
+      where _synced_at >= now() - interval '{{ var('incremental_lookback_days') }} days'
     {% endif %}
 ),
 
@@ -109,12 +108,12 @@ select
 
     -- Dates
     c.contact_created_at                              as lead_created_at,
-    date(c.contact_created_at)                        as lead_created_date,
-    date_trunc(date(c.contact_created_at), month)     as lead_created_month,
-    date_trunc(date(c.contact_created_at), quarter)   as lead_created_quarter,
+    c.contact_created_at::date                        as lead_created_date,
+    date_trunc('month',   c.contact_created_at)::date as lead_created_month,
+    date_trunc('quarter', c.contact_created_at)::date as lead_created_quarter,
     ft.first_touch_at,
     ft.first_sales_touch_at,
-    timestamp_diff(ft.first_sales_touch_at, c.contact_created_at, hour) as hours_to_first_sales_touch,
+    {{ timestamp_diff_seconds('ft.first_sales_touch_at', 'c.contact_created_at') }} / 3600.0 as hours_to_first_sales_touch,
 
     -- Lifecycle
     c.lifecycle_stage,

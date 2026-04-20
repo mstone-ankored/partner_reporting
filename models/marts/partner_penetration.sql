@@ -23,7 +23,7 @@ our_won_customers as (
         partner_name,
         -- A "customer" is one unique company that reached closed_won. If
         -- company_name is null we fall back to contact_id.
-        count(distinct coalesce(nullif(lower(trim(pd.deal_name)), ''), cast(pd.contact_id as string))) as our_customer_count,
+        count(distinct coalesce(nullif(lower(trim(pd.deal_name)), ''), pd.contact_id::text)) as our_customer_count,
         min(pd.deal_closed_won_at) as our_first_won_at
     from {{ ref('partner_deals') }} pd
     where is_closed_won = true
@@ -36,7 +36,7 @@ select
     t.as_of_date,
     t.total_customer_count,
     coalesce(oc.our_customer_count, 0)                                   as our_customer_count,
-    safe_divide(coalesce(oc.our_customer_count, 0), nullif(t.total_customer_count, 0)) as penetration_rate,
+    {{ safe_divide('coalesce(oc.our_customer_count, 0)', 't.total_customer_count') }} as penetration_rate,
     oc.our_first_won_at
 from totals t
 left join our_won_customers oc
