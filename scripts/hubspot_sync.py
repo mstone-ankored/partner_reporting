@@ -274,6 +274,8 @@ class HubSpot:
                 log.warning("%d on %s, sleeping %ds", r.status_code, path, wait)
                 time.sleep(wait)
                 continue
+            if r.status_code == 403 and "MISSING_SCOPES" in r.text:
+                raise MissingScopes(f"HubSpot {method} {path} 403: {r.text[:500]}")
             if not r.ok:
                 raise RuntimeError(f"HubSpot {method} {path} {r.status_code}: {r.text[:500]}")
             return r.json()
@@ -374,6 +376,11 @@ class HubSpot:
 
 class SearchCeilingHit(Exception):
     """Raised when an incremental search would exceed HubSpot's 10k cap."""
+
+
+class MissingScopes(Exception):
+    """Raised when the HubSpot private app lacks scopes for an object type.
+    Callers that treat the object as optional can catch this and skip."""
 
 
 # -----------------------------------------------------------------------------
@@ -693,6 +700,9 @@ def sync_engagements(hs: HubSpot, conn, since: datetime | None) -> int:
             total += upsert(conn, "engagement", ["engagement_id"], batch)
             upsert(conn, "engagement_contact",
                    ["engagement_id", "contact_id"], assoc_batch)
+        except MissingScopes as e:
+            log.warning("skipping engagements/%s — missing scopes: %s", obj_name, e)
+            continue
         except SearchCeilingHit:
             log.warning("%s search hit ceiling — doing full scan for this type", obj_name)
             it = hs.list_objects(obj_name, properties=props, associations=["contacts"])
@@ -856,11 +866,15 @@ def main() -> int:
         log.info("engagements: %d rows (since=%s)", n, since)
 
         # Forms + submissions — always full scan. Forms list is small and
-        # submission volume is typically modest.
-        forms = sync_forms(hs, conn)
-        log.info("forms: %d", len(forms))
-        n = sync_form_submissions(hs, conn, forms)
-        log.info("form submissions: %d rows", n)
+        # submission volume is typically modest. Skipped if the private app
+        # lacks the `forms` / `forms-uploaded-files` scopes.
+        try:
+            forms = sync_forms(hs, conn)
+            log.info("forms: %d", len(forms))
+            n = sync_form_submissions(hs, conn, forms)
+            log.info("form submissions: %d rows", n)
+        except MissingScopes as e:
+            log.warning("skipping forms — missing scopes: %s", e)
 
     return 0
 
