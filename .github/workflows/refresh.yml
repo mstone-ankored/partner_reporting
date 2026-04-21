@@ -11,8 +11,9 @@ name: refresh-partner-reporting
 # soon as dbt finishes — Notion is eventual-consistency on the 30-min cadence.
 #
 # Secrets required (Settings → Secrets and variables → Actions):
-#   NEON_HOST, NEON_USER, NEON_PASSWORD, NEON_DATABASE   — dbt target
-#   DATABASE_URL                                         — hubspot_sync.py + notion_sync.py
+#   DATABASE_URL                                         — Neon pooled URL. Host/user/
+#                                                          password/dbname are parsed
+#                                                          out of it for dbt.
 #   HUBSPOT_ACCESS_TOKEN                                 — HubSpot private-app token
 #   NOTION_API_KEY                                       — Notion integration token
 #   NOTION_WORKSPACE_ID (optional)                       — scope override
@@ -41,10 +42,7 @@ jobs:
     timeout-minutes: 30
     env:
       DBT_PROFILES_DIR: ${{ github.workspace }}/.dbt
-      NEON_HOST:     ${{ secrets.NEON_HOST }}
-      NEON_USER:     ${{ secrets.NEON_USER }}
-      NEON_PASSWORD: ${{ secrets.NEON_PASSWORD }}
-      NEON_DATABASE: ${{ secrets.NEON_DATABASE }}
+      DATABASE_URL:     ${{ secrets.DATABASE_URL }}
     steps:
       - uses: actions/checkout@v4
 
@@ -54,6 +52,28 @@ jobs:
           cache: pip
 
       - run: pip install -r scripts/requirements.txt
+
+      - name: Parse DATABASE_URL into NEON_* env vars
+        # dbt-postgres can't consume a single connection URL, so derive the
+        # four pieces it needs from DATABASE_URL. Values are masked in logs.
+        run: |
+          python3 - <<'PY'
+          import os, urllib.parse
+          u = urllib.parse.urlparse(os.environ["DATABASE_URL"])
+          vals = {
+              "NEON_HOST": u.hostname or "",
+              "NEON_USER": urllib.parse.unquote(u.username or ""),
+              "NEON_PASSWORD": urllib.parse.unquote(u.password or ""),
+              "NEON_DATABASE": (u.path or "").lstrip("/") or "neondb",
+          }
+          with open(os.environ["GITHUB_ENV"], "a") as env_file:
+              for k, v in vals.items():
+                  env_file.write(f"{k}={v}\n")
+          # Mask the secret-ish values in logs.
+          print(f"::add-mask::{vals['NEON_PASSWORD']}")
+          print(f"::add-mask::{vals['NEON_USER']}")
+          print(f"::add-mask::{vals['NEON_HOST']}")
+          PY
 
       - name: Configure dbt profile
         run: |
@@ -80,7 +100,6 @@ jobs:
 
       - name: Sync HubSpot → Neon
         env:
-          DATABASE_URL:         ${{ secrets.DATABASE_URL }}
           HUBSPOT_ACCESS_TOKEN: ${{ secrets.HUBSPOT_ACCESS_TOKEN }}
         run: python scripts/hubspot_sync.py
 
@@ -89,7 +108,6 @@ jobs:
 
       - name: Sync to Notion
         env:
-          DATABASE_URL:        ${{ secrets.DATABASE_URL }}
           NOTION_API_KEY:      ${{ secrets.NOTION_API_KEY }}
           NOTION_WORKSPACE_ID: ${{ secrets.NOTION_WORKSPACE_ID }}
         run: python scripts/notion_sync.py
