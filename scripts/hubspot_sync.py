@@ -294,7 +294,9 @@ class HubSpot:
         associations: list[str] | None = None,
         archived: bool = False,
     ) -> Iterator[dict[str, Any]]:
-        params: dict[str, Any] = {"limit": PAGE_SIZE, "archived": "true" if archived else "false"}
+        # HubSpot caps page size at 50 when propertiesWithHistory is requested.
+        limit = 50 if properties_with_history else PAGE_SIZE
+        params: dict[str, Any] = {"limit": limit, "archived": "true" if archived else "false"}
         if properties:
             params["properties"] = ",".join(properties)
         if properties_with_history:
