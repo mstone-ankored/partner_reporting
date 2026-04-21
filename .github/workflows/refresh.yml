@@ -1,12 +1,19 @@
 name: refresh-partner-reporting
 
-# Scheduled dbt build against Neon, then push the selected mart rows to Notion.
+# Scheduled HubSpot sync → dbt build → Notion push.
+#
+# Pipeline:
+#   1. scripts/hubspot_sync.py  — pull raw HubSpot objects into Neon `hubspot` schema
+#   2. dbt build                — staging → intermediate → marts in `partner_reporting`
+#   3. scripts/notion_sync.py   — push selected mart rows to Notion databases
+#
 # The web app (on Vercel) reads Neon live, so the dashboard is always fresh as
 # soon as dbt finishes — Notion is eventual-consistency on the 30-min cadence.
 #
 # Secrets required (Settings → Secrets and variables → Actions):
 #   NEON_HOST, NEON_USER, NEON_PASSWORD, NEON_DATABASE   — dbt target
-#   DATABASE_URL                                         — used by notion_sync.py
+#   DATABASE_URL                                         — hubspot_sync.py + notion_sync.py
+#   HUBSPOT_ACCESS_TOKEN                                 — HubSpot private-app token
 #   NOTION_API_KEY                                       — Notion integration token
 #   NOTION_WORKSPACE_ID (optional)                       — scope override
 
@@ -21,6 +28,7 @@ on:
       - "macros/**"
       - "seeds/**"
       - "dbt_project.yml"
+      - "scripts/hubspot_sync.py"
       - "scripts/notion_sync.py"
 
 concurrency:
@@ -69,6 +77,12 @@ jobs:
 
       - name: dbt deps
         run: dbt deps
+
+      - name: Sync HubSpot → Neon
+        env:
+          DATABASE_URL:         ${{ secrets.DATABASE_URL }}
+          HUBSPOT_ACCESS_TOKEN: ${{ secrets.HUBSPOT_ACCESS_TOKEN }}
+        run: python scripts/hubspot_sync.py
 
       - name: dbt build
         run: dbt build --target prod

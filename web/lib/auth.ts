@@ -4,6 +4,13 @@ import bcrypt from "bcryptjs";
 import { pool, APP_SCHEMA } from "./db";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  // next-auth v5 beta sometimes fails to auto-detect the secret in the edge
+  // middleware runtime — pass it explicitly so we read both the canonical
+  // AUTH_SECRET and the older NEXTAUTH_SECRET name.
+  secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
+  // Vercel's proxy rewrites the host header; trusting it avoids
+  // UntrustedHost errors on the production URL.
+  trustHost: true,
   session: { strategy: "jwt" },
   pages: { signIn: "/login" },
   providers: [
