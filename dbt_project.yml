@@ -64,19 +64,18 @@ vars:
 
 models:
   partner_reporting:
+    # Everything lands in the default target schema (partner_reporting) so the
+    # web app, which queries `partner_reporting.<mart>`, sees it without any
+    # env-var overrides. Intermediate models are ephemeral (inlined as CTEs).
     staging:
       +materialized: view
-      +schema: staging
     intermediate:
       +materialized: ephemeral
-      +schema: intermediate
     marts:
       +materialized: table
-      +schema: marts
 
 seeds:
   partner_reporting:
-    +schema: seeds
     ref_partners:
       +column_types:
         partner_id: string
