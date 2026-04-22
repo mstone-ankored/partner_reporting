@@ -65,4 +65,8 @@ flagged as (
     from extracted
 )
 
-select * from flagged
+-- hubspot_sync.py resolves contact_id by email after the submission rows are
+-- landed; submissions whose email doesn't match any HubSpot contact stay null
+-- and can't be attributed. Drop them here so downstream models can rely on
+-- contact_id being present.
+select * from flagged where contact_id is not null
