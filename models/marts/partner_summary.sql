@@ -8,12 +8,17 @@
 -- partner ranking views. It is intentionally wide; the dashboard can pick a
 -- subset of columns per widget.
 
+-- Only include leads/deals whose partner is in ref_partners. Unmatched ones
+-- (partner_id is null) would aggregate together into nonsensical rows and
+-- break the (partner_id, period_type, period_start_date) uniqueness test.
+-- They still surface in partner_leads / partner_deals for detail views, and
+-- the assert_partner_leads_match_partners_seed test warns to onboard them.
 with leads as (
-    select * from {{ ref('partner_leads') }}
+    select * from {{ ref('partner_leads') }} where partner_id is not null
 ),
 
 deals as (
-    select * from {{ ref('partner_deals') }}
+    select * from {{ ref('partner_deals') }} where partner_id is not null
 ),
 
 deals_cycle as (
@@ -21,6 +26,7 @@ deals_cycle as (
     select *
     from {{ ref('partner_deals') }}
     where is_closed_won = true
+      and partner_id is not null
 ),
 
 penetration as (

@@ -22,6 +22,10 @@ with stage_entries as (
         pd.is_closed_won
     from {{ ref('partner_deals') }} pd
     join {{ ref('int_deal_stage_durations') }} sd using (deal_id)
+    -- Exclude unmatched partners (partner_id is null) so the
+    -- (partner_id, deal_stage) uniqueness test can't trip on free-text
+    -- partner_name variants collapsing into the null bucket.
+    where pd.partner_id is not null
 ),
 
 stage_order_lookup as (
