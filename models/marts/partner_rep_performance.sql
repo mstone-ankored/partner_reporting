@@ -9,7 +9,8 @@
 --     group by 1, 2;
 
 with deals as (
-    select * from {{ ref('partner_deals') }}
+    -- Exclude unmatched partners (partner_id is null); see notes in partner_summary.sql.
+    select * from {{ ref('partner_deals') }} where partner_id is not null
 )
 
 select

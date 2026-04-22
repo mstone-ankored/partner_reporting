@@ -4,8 +4,9 @@
 -- eventually reached each downstream stage AND how many have closed as of now.
 -- Used for cohort curves on the dashboard.
 
-with leads as (select * from {{ ref('partner_leads') }}),
-     deals as (select * from {{ ref('partner_deals') }})
+-- Exclude unmatched partners (partner_id is null); see notes in partner_summary.sql.
+with leads as (select * from {{ ref('partner_leads') }} where partner_id is not null),
+     deals as (select * from {{ ref('partner_deals') }} where partner_id is not null)
 
 select
     l.partner_id,
