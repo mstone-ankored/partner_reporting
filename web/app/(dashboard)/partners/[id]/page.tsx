@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
+  getDealsForPartner,
   getFunnelForPartner,
   getMonthlySummary,
   getPartnerAllTime,
@@ -16,11 +17,12 @@ export default async function PartnerDetailPage({
 }: {
   params: { id: string };
 }) {
-  const [allTime, funnel, reps, monthly] = await Promise.all([
+  const [allTime, funnel, reps, monthly, deals] = await Promise.all([
     getPartnerAllTime(params.id),
     getFunnelForPartner(params.id),
     getRepPerfForPartner(params.id),
     getMonthlySummary(params.id),
+    getDealsForPartner(params.id),
   ]);
   if (!allTime) notFound();
 
@@ -91,7 +93,7 @@ export default async function PartnerDetailPage({
         </Panel>
       </div>
 
-      <Panel title="Reps on this partner's deals">
+      <Panel title="Reps on this partner's deals" className="mb-4">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="text-muted text-xs uppercase">
@@ -127,6 +129,76 @@ export default async function PartnerDetailPage({
             </tbody>
           </table>
         </div>
+      </Panel>
+
+      <Panel title={`Deals (${deals.length})`}>
+        {deals.length === 0 ? (
+          <div className="text-sm text-muted">No deals attributed to this partner yet.</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-muted text-xs uppercase">
+                <tr className="border-b border-border">
+                  <th className="text-left py-2 pr-3">Deal</th>
+                  <th className="text-left py-2 pr-3">Stage</th>
+                  <th className="text-left py-2 pr-3">Status</th>
+                  <th className="text-right py-2 pr-3">Amount</th>
+                  <th className="text-left py-2 pr-3">Owner</th>
+                  <th className="text-right py-2 pr-3">Created</th>
+                  <th className="text-right py-2 pr-3">Closed</th>
+                  <th className="text-right py-2 pr-3">Cycle (d)</th>
+                  <th className="text-right py-2 pr-3">Touches</th>
+                </tr>
+              </thead>
+              <tbody>
+                {deals.map((d) => (
+                  <tr key={d.deal_id} className="border-b border-border/50 hover:bg-bg">
+                    <td className="py-2 pr-3">{d.deal_name || "—"}</td>
+                    <td className="py-2 pr-3 text-xs">{d.deal_stage || "—"}</td>
+                    <td className="py-2 pr-3 text-xs">
+                      <span
+                        className={
+                          d.deal_status === "won"
+                            ? "text-good"
+                            : d.deal_status === "lost"
+                              ? "text-bad"
+                              : "text-muted"
+                        }
+                      >
+                        {d.deal_status || "—"}
+                      </span>
+                    </td>
+                    <td className="py-2 pr-3 text-right">
+                      {d.amount != null ? fmtMoney(Number(d.amount)) : "—"}
+                    </td>
+                    <td className="py-2 pr-3">
+                      {d.deal_owner_name || "—"}
+                      {d.deal_owner_email ? (
+                        <span className="ml-1 text-xs text-muted">{d.deal_owner_email}</span>
+                      ) : null}
+                    </td>
+                    <td className="py-2 pr-3 text-right text-xs">
+                      {d.deal_created_at ? String(d.deal_created_at).slice(0, 10) : "—"}
+                    </td>
+                    <td className="py-2 pr-3 text-right text-xs">
+                      {d.deal_closed_won_at
+                        ? String(d.deal_closed_won_at).slice(0, 10)
+                        : d.deal_close_date
+                          ? String(d.deal_close_date).slice(0, 10)
+                          : "—"}
+                    </td>
+                    <td className="py-2 pr-3 text-right">
+                      {d.time_to_close_days != null ? Number(d.time_to_close_days).toFixed(0) : "—"}
+                    </td>
+                    <td className="py-2 pr-3 text-right">
+                      {d.sales_touches_total != null ? fmtInt(Number(d.sales_touches_total)) : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Panel>
     </>
   );
