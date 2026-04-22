@@ -19,14 +19,27 @@ clean-targets:
 # Variables control which HubSpot pipeline properties map to partner attribution.
 # Override per-environment in profiles.yml or dbt run --vars.
 vars:
-  # The custom HubSpot contact property that directly names the referring partner.
-  # Most HubSpot instances have a custom "partner" or "partner_name" contact property
-  # populated either manually by the partner team or by form submission workflows.
-  partner_name_contact_property: "referring_partner_name"
+  # Custom HubSpot contact property (dropdown) that names the referring partner.
+  # Value should match an entry in ref_partners.partner_name (case-insensitive).
+  partner_name_contact_property: "referring_partner"
 
-  # The HubSpot custom property (if any) that explicitly flags the inbound channel:
-  # e.g. "partner_email" vs "form". If null, we infer source_type from other signals.
-  partner_source_type_property: "partner_source_type"
+  # Custom HubSpot deal property (dropdown) that names the referring partner on
+  # the deal itself. Used as a first-class attribution signal alongside
+  # deal_source = 'Partner Referral'.
+  partner_name_deal_property: "referring_partner"
+
+  # HubSpot deal enumeration `deal_source`; the value that marks a deal as
+  # partner-sourced. Matched case-insensitively.
+  deal_source_partner_value: "Partner Referral"
+
+  # Contact enumerations that flag a lead as partner-sourced when the
+  # `referring_partner` dropdown isn't filled in. Lowercased, whitespace
+  # trimmed; any match promotes the contact to partner_email source_type
+  # (partner unknown).
+  partner_contact_source_markers:
+    - "partner_referral"
+    - "partner"
+    - "partner referral (partner)"
 
   # Names of HubSpot forms that are treated as partner-referral forms even when
   # the submission does not include an explicit partner_name field.

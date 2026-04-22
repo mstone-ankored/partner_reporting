@@ -69,8 +69,13 @@ CONTACT_PROPS = [
     "hs_latest_source_data_1",
     "hs_latest_source_data_2",
     "hubspot_owner_id",
-    "referring_partner_name",
-    "partner_source_type",
+    # Partner attribution on contacts. `referring_partner` is the dropdown of
+    # partner names; `lead_origin` / `lead_source` carry a "Partner Referral"
+    # flag (used as a secondary signal when the dropdown isn't filled in).
+    "referring_partner",
+    "lead_origin",
+    "lead_source",
+    "partner_source",
     "hs_lastmodifieddate",
 ]
 
@@ -80,7 +85,11 @@ DEAL_PROPS = [
     "createdate", "closedate", "hs_closed_won_date",
     "hs_is_closed_won", "hs_is_closed",
     "dealtype", "hubspot_owner_id",
-    "referring_partner_name",
+    # Partner attribution on deals. `deal_source` = 'Partner Referral' is the
+    # flag, `referring_partner` is the dropdown of which partner.
+    "deal_source",
+    "referring_partner",
+    "deal_source_detail",
     "hs_lastmodifieddate",
 ]
 
@@ -151,11 +160,20 @@ DDL_STATEMENTS = [
         property_hs_latest_source_data_1 text,
         property_hs_latest_source_data_2 text,
         property_hubspot_owner_id text,
-        property_referring_partner_name text,
-        property_partner_source_type text,
+        property_referring_partner text,
+        property_lead_origin text,
+        property_lead_source text,
+        property_partner_source text,
         _fivetran_synced timestamptz not null default now(),
         _archived boolean not null default false
     )""",
+
+    # Backfill the new contact columns on pre-existing hubspot.contact tables.
+    # ADD COLUMN IF NOT EXISTS is idempotent.
+    "alter table hubspot.contact add column if not exists property_referring_partner text",
+    "alter table hubspot.contact add column if not exists property_lead_origin text",
+    "alter table hubspot.contact add column if not exists property_lead_source text",
+    "alter table hubspot.contact add column if not exists property_partner_source text",
 
     """create table if not exists hubspot.deal (
         deal_id text primary key,
@@ -172,10 +190,17 @@ DDL_STATEMENTS = [
         property_hs_is_closed text,
         property_dealtype text,
         property_hubspot_owner_id text,
-        property_referring_partner_name text,
+        property_deal_source text,
+        property_referring_partner text,
+        property_deal_source_detail text,
         _fivetran_synced timestamptz not null default now(),
         _archived boolean not null default false
     )""",
+
+    # Backfill the new deal columns on pre-existing hubspot.deal tables.
+    "alter table hubspot.deal add column if not exists property_deal_source text",
+    "alter table hubspot.deal add column if not exists property_referring_partner text",
+    "alter table hubspot.deal add column if not exists property_deal_source_detail text",
 
     """create table if not exists hubspot.deal_stage_history (
         deal_id text not null,

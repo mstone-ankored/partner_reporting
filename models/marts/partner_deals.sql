@@ -45,26 +45,29 @@ contacts as (
     select contact_id, contact_created_at from {{ ref('stg_hubspot__contacts') }}
 ),
 
--- Combine partner attribution from (1) the contact attribution table and
--- (2) the deal-level custom property, preferring contact-level (it's higher
--- fidelity since it also carries source_type).
+-- Combine partner attribution from two paths, preferring the deal-level
+-- dropdown (deal_source='Partner Referral' + referring_partner) since users
+-- tag it explicitly. Fallback: inherit from primary contact's attribution.
 deal_partner as (
     select
         d.deal_id,
-        coalesce(a.partner_id, pd.partner_id)             as partner_id,
-        coalesce(a.partner_name, d.referring_partner_name_deal) as partner_name,
-        a.source_type,
+        coalesce(pd.partner_id, a.partner_id)              as partner_id,
+        coalesce(pd.partner_name, d.referring_partner_deal, a.partner_name) as partner_name,
+        coalesce(
+            case when d.is_partner_sourced_deal then 'partner_email' end,
+            a.source_type
+        )                                                  as source_type,
         case
-            when a.partner_name is not null then 'contact_attribution'
-            when d.referring_partner_name_deal is not null then 'deal_property'
+            when d.is_partner_sourced_deal and d.referring_partner_deal is not null then 'deal_referring_partner'
+            when a.partner_name is not null                                         then 'contact_attribution'
             else null
-        end                                               as partner_attribution_origin
+        end                                                as partner_attribution_origin
     from deals d
     left join primary_contact pc using (deal_id)
     left join attribution a
       on a.contact_id = pc.primary_contact_id
     left join partners pd
-      on lower(trim(d.referring_partner_name_deal)) = pd.partner_name_key
+      on lower(trim(d.referring_partner_deal)) = pd.partner_name_key
 )
 
 select
