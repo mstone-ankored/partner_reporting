@@ -78,14 +78,14 @@ seeds:
   partner_reporting:
     ref_partners:
       +column_types:
-        partner_id: string
-        partner_name: string
-        partner_domain: string
-        partner_tier: string
+        partner_id: text
+        partner_name: text
+        partner_domain: text
+        partner_tier: text
         partner_start_date: date
     partner_total_customers:
       +column_types:
-        partner_id: string
-        partner_name: string
+        partner_id: text
+        partner_name: text
         as_of_date: date
         total_customer_count: integer
