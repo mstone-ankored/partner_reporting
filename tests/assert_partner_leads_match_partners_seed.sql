@@ -1,5 +1,7 @@
 -- Warn if partner_leads contains partner_names that do not exist in ref_partners.
--- A non-empty result is a signal to onboard the partner into the seed.
+-- A non-empty result is a signal to onboard the partner into the seed — not a
+-- build-breaking error, so emit a warning rather than fail dbt build.
+{{ config(severity = 'warn') }}
 
 select
     pl.partner_name,

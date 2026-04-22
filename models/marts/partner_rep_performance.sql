@@ -14,10 +14,10 @@ with deals as (
 
 select
     partner_id,
-    partner_name,
+    max(partner_name)                                                as partner_name,
     deal_owner_id,
-    deal_owner_name,
-    deal_owner_email,
+    max(deal_owner_name)                                             as deal_owner_name,
+    max(deal_owner_email)                                            as deal_owner_email,
     count(distinct deal_id)                                          as deals_total,
     count(distinct case when is_closed_won then deal_id end)         as deals_won,
     count(distinct case when is_closed and not is_closed_won then deal_id end) as deals_lost,
@@ -31,4 +31,4 @@ select
     avg(case when is_closed_won then time_to_close_days end)         as avg_cycle_days,
     avg(case when is_closed_won then sales_touches_total end)        as avg_sales_touches
 from deals
-group by 1, 2, 3, 4, 5
+group by partner_id, deal_owner_id
