@@ -1,5 +1,9 @@
 partner_id,partner_name,partner_domain,partner_tier,partner_start_date
-P001,Acme Partners,acmepartners.com,Tier1,2023-01-01
-P002,Beta Consulting,betaconsulting.io,Tier2,2023-06-15
-P003,Gamma Advisors,gammaadvisors.com,Tier2,2024-02-01
-P004,Delta Group,deltagroup.co,Tier3,2024-09-10
+leagueapps,LeagueApps,leagueapps.com,Tier 1,2024-01-01
+teamsnap,TeamSnap,teamsnap.com,Tier 2,2024-01-01
+sprocket,Sprocket,sprocket.com,Tier 2,2024-01-01
+amilia,Amilia,amilia.com,Tier 3,2024-01-01
+otto_demosphere,Otto_Demosphere,ottosport.ai,Tier 2,2024-01-01
+playershealth,PlayersHealth,playershealth.com,Tier 2,2024-01-01
+jackrabbit,JackRabbit,jackrabbit.com,Tier 3,2024-01-01
+civicplus,CivicPlus,civicplus.com,Tier 1,2024-01-01
