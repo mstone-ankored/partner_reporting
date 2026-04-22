@@ -1,8 +1,9 @@
 {{ config(materialized='view') }}
 
--- One row per HubSpot deal.
--- partner_name is captured if a custom deal-level property exists; otherwise
--- we inherit partner attribution from the deal's primary contact downstream.
+-- One row per HubSpot deal. Exposes `deal_source` (the "Partner Referral" /
+-- "Inbound" / etc. picklist) and `referring_partner_deal` (the dropdown of
+-- which partner) as first-class partner-attribution signals. Contact-level
+-- attribution is still inherited downstream when deal-level is missing.
 
 with source as (
     select * from {{ source('hubspot', 'deal') }}
@@ -27,7 +28,9 @@ renamed as (
                       then true else false end)                    as is_closed,
         property_dealtype                                           as deal_type,
         property_hubspot_owner_id                                   as deal_owner_id,
-        {{ hubspot_property('property', var('partner_name_contact_property')) }} as referring_partner_name_deal_raw,
+        property_deal_source                                        as deal_source_raw,
+        {{ hubspot_property('property', var('partner_name_deal_property')) }} as referring_partner_deal_raw,
+        property_deal_source_detail                                 as deal_source_detail_raw,
         _fivetran_synced                                            as _synced_at
     from source
 )
@@ -52,6 +55,10 @@ select
     end                                                             as deal_status,
     deal_type,
     deal_owner_id,
-    nullif(trim(referring_partner_name_deal_raw), '')               as referring_partner_name_deal,
+    nullif(trim(deal_source_raw), '')                               as deal_source,
+    lower(trim(coalesce(deal_source_raw, ''))) = lower('{{ var("deal_source_partner_value") }}')
+                                                                    as is_partner_sourced_deal,
+    nullif(trim(referring_partner_deal_raw), '')                    as referring_partner_deal,
+    nullif(trim(deal_source_detail_raw), '')                        as deal_source_detail,
     _synced_at
 from renamed

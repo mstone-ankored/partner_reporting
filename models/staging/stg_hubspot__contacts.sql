@@ -37,10 +37,13 @@ renamed as (
         property_hs_latest_source_data_2                            as latest_source_drill_down_2,
         property_hubspot_owner_id                                   as contact_owner_id,
 
-        -- The names of the custom HubSpot properties are configurable via
-        -- dbt vars so different HubSpot instances can map their own fields.
-        {{ hubspot_property('property', var('partner_name_contact_property')) }}  as referring_partner_name_raw,
-        {{ hubspot_property('property', var('partner_source_type_property')) }}   as partner_source_type_raw,
+        -- The name of the HubSpot contact property carrying the partner
+        -- dropdown is configurable via dbt vars so different instances can
+        -- map their own custom fields.
+        {{ hubspot_property('property', var('partner_name_contact_property')) }}  as referring_partner_raw,
+        property_lead_origin                                        as lead_origin_raw,
+        property_lead_source                                        as lead_source_raw,
+        property_partner_source                                     as partner_source_notes_raw,
 
         _fivetran_synced                                            as _synced_at
     from source
@@ -72,7 +75,9 @@ select
     latest_source_drill_down_1,
     latest_source_drill_down_2,
     contact_owner_id,
-    nullif(trim(referring_partner_name_raw), '')                    as referring_partner_name_declared,
-    lower(nullif(trim(partner_source_type_raw), ''))                as partner_source_type_declared,
+    nullif(trim(referring_partner_raw), '')                         as referring_partner_declared,
+    lower(nullif(trim(lead_origin_raw), ''))                        as lead_origin_declared,
+    lower(nullif(trim(lead_source_raw), ''))                        as lead_source_declared,
+    nullif(trim(partner_source_notes_raw), '')                      as partner_source_notes,
     _synced_at
 from renamed
