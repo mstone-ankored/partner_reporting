@@ -53,6 +53,12 @@ partner_periods as (
     select partner_id, partner_name, 'all_time' as period_type, cast(null as date) as period_start_date from leads
     union
     select partner_id, partner_name, 'all_time' as period_type, cast(null as date) as period_start_date from deals
+    union
+    -- Ensure every seed partner has at least an 'all_time' row, even if they
+    -- have zero HubSpot leads/deals yet — otherwise the dashboard rankings
+    -- would silently drop them.
+    select partner_id, partner_name, 'all_time' as period_type, cast(null as date) as period_start_date
+    from {{ ref('stg_ref__partners') }}
 ),
 
 -- -----------------------------------------------------------------------------

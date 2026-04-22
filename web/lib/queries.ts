@@ -171,6 +171,40 @@ export async function getRepPerfForPartner(partnerId: string) {
   );
 }
 
+export type PartnerDealRow = {
+  deal_id: string;
+  deal_name: string | null;
+  deal_stage: string | null;
+  deal_status: string | null;
+  amount: number | null;
+  deal_owner_name: string | null;
+  deal_owner_email: string | null;
+  deal_created_at: string | null;
+  deal_close_date: string | null;
+  deal_closed_won_at: string | null;
+  is_closed_won: boolean;
+  is_closed: boolean;
+  time_to_close_days: number | null;
+  sales_touches_total: number | null;
+};
+
+export async function getDealsForPartner(partnerId: string): Promise<PartnerDealRow[]> {
+  const rows = await sql(
+    `select deal_id, deal_name, deal_stage, deal_status, amount,
+            deal_owner_name, deal_owner_email,
+            deal_created_at, deal_close_date, deal_closed_won_at,
+            is_closed_won, is_closed,
+            time_to_close_days, sales_touches_total
+     from ${t("partner_deals")}
+     where partner_id = $1
+     order by
+       case when is_closed_won then 0 when not is_closed then 1 else 2 end,
+       coalesce(deal_closed_won_at, deal_close_date, deal_created_at) desc nulls last`,
+    [partnerId],
+  );
+  return rows as PartnerDealRow[];
+}
+
 export async function getPartnerList(): Promise<{ partner_id: string; partner_name: string }[]> {
   const rows = await sql(
     `select distinct partner_id, partner_name

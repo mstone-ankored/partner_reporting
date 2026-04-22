@@ -61,10 +61,12 @@ export function Panel({
 
 export function fmtMoney(n: number | null | undefined): string {
   if (n == null || isNaN(n)) return "—";
-  const abs = Math.abs(n);
-  if (abs >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
-  if (abs >= 1_000) return `$${(n / 1_000).toFixed(1)}K`;
-  return `$${n.toFixed(0)}`;
+  return n.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  });
 }
 export function fmtInt(n: number | null | undefined): string {
   if (n == null) return "—";
