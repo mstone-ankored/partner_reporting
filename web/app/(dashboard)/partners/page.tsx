@@ -3,7 +3,7 @@ import { getPartnerRankings } from "@/lib/queries";
 import { PageHeader, Panel, fmtInt, fmtMoney, fmtPct } from "@/components/ui";
 import { QuadrantScatter } from "@/components/Chart";
 
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 export default async function PartnersPage() {
   const rankings = await getPartnerRankings();

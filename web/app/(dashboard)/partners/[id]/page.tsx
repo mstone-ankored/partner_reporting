@@ -10,7 +10,7 @@ import {
 import { KpiCard, PageHeader, Panel, fmtInt, fmtMonthYear, fmtMoney, fmtPct } from "@/components/ui";
 import { TrendLine } from "@/components/Chart";
 
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 export default async function PartnerDetailPage({
   params,

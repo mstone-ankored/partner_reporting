@@ -51,6 +51,10 @@ jobs:
           python-version: "3.11"
           cache: pip
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
       - run: pip install -r scripts/requirements.txt
 
       - name: Parse DATABASE_URL into NEON_* env vars
@@ -94,6 +98,15 @@ jobs:
                 threads: 8
                 keepalives_idle: 0
           EOF
+
+      - name: Apply web-app schema migrations
+        # Idempotent — each migration uses `create ... if not exists`. Runs
+        # before dbt build so new tables (e.g. partner_customer_counts) are
+        # available as sources to dbt models.
+        working-directory: web
+        run: |
+          npm install --no-audit --no-fund --prefer-offline
+          npm run migrate
 
       - name: dbt deps
         run: dbt deps

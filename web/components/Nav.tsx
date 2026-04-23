@@ -6,6 +6,7 @@ const links = [
   { href: "/partners", label: "Partners" },
   { href: "/trends", label: "Trends" },
   { href: "/forecast", label: "Forecast" },
+  { href: "/settings/partners", label: "Partner info" },
   { href: "/settings/notion", label: "Notion sync" },
 ];
 

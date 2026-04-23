@@ -74,3 +74,24 @@ sources:
       - name: owner
         identifier: owner
         description: HubSpot owner (sales rep) dimension.
+
+  - name: partner_reporting_app
+    description: >
+      Web-app-owned tables. Populated by the Next.js app (migrations in
+      web/migrations). dbt reads them as sources for models that need
+      hand-entered metadata (customer counts for penetration, etc.).
+    database: "{{ target.database }}"
+    schema: partner_reporting_app
+    tables:
+      - name: partner_customer_counts
+        identifier: partner_customer_counts
+        description: >
+          Hand-entered partner customer counts (one row per partner per as_of_date).
+          Drives partner_penetration. Edited at /settings/partners.
+        columns:
+          - name: partner_id
+            tests: [not_null]
+          - name: as_of_date
+            tests: [not_null]
+          - name: total_customer_count
+            tests: [not_null]
