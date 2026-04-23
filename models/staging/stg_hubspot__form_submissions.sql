@@ -57,6 +57,13 @@ flagged as (
         *,
         case
             when partner_name_from_form is not null then true
+            -- Configurable prefix match: any form whose name starts with e.g.
+            -- "Partner" is treated as a partner-referral form. Covers HubSpot
+            -- conventions like "Partner Referral — LeagueApps", "Partner
+            -- Introduction Form", etc. without listing each one out.
+            when lower(form_name) like lower('{{ var("partner_form_name_prefix") }}') || '%' then true
+            -- Legacy exact-name fallback for any forms that don't follow the
+            -- prefix convention.
             when lower(form_name) in (
                 {{ "'" ~ var('partner_referral_form_names') | map('lower') | join("','") ~ "'" }}
             ) then true

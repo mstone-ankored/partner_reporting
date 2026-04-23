@@ -52,22 +52,108 @@ export type AllTimeSummary = {
   partner_penetration_rate: number | null;
 };
 
+export type PeriodFilter = "all" | "ytd" | "last_12m" | "qtd" | "mtd";
+
+export const PERIOD_LABELS: Record<PeriodFilter, string> = {
+  all: "All time",
+  ytd: "Year to date",
+  last_12m: "Last 12 months",
+  qtd: "Quarter to date",
+  mtd: "Month to date",
+};
+
+// Map a PeriodFilter to a partner_summary query predicate.
+// Uses the `month`-grain rows for any time-bounded filter so ranges cut cleanly;
+// `all` uses the `all_time` row (pre-aggregated, one row per partner).
+function periodPredicate(period: PeriodFilter): { periodType: string; where: string } {
+  switch (period) {
+    case "all":
+      return { periodType: "all_time", where: "period_type = 'all_time'" };
+    case "ytd":
+      return {
+        periodType: "month",
+        where: `period_type = 'month' and period_start_date >= date_trunc('year', now())::date`,
+      };
+    case "last_12m":
+      return {
+        periodType: "month",
+        where: `period_type = 'month' and period_start_date >= (date_trunc('month', now()) - interval '11 months')::date`,
+      };
+    case "qtd":
+      return {
+        periodType: "month",
+        where: `period_type = 'month' and period_start_date >= date_trunc('quarter', now())::date`,
+      };
+    case "mtd":
+      return {
+        periodType: "month",
+        where: `period_type = 'month' and period_start_date = date_trunc('month', now())::date`,
+      };
+  }
+}
+
+export async function getTotals(period: PeriodFilter = "all"): Promise<{
+  total_leads: number;
+  total_mql: number;
+  total_sql: number;
+  deals_won: number;
+  deals_total: number;
+  revenue: number;
+  partners_active: number;
+}> {
+  const { where } = periodPredicate(period);
+  const rows = await sql(
+    `select
+        sum(total_leads)::bigint             as total_leads,
+        sum(leads_reached_mql)::bigint       as total_mql,
+        sum(leads_reached_sql)::bigint       as total_sql,
+        sum(deals_closed_won)::bigint        as deals_won,
+        sum(total_deals_created)::bigint     as deals_total,
+        sum(revenue_closed_won)::numeric     as revenue,
+        count(distinct case
+                when total_leads > 0
+                  or total_deals_created > 0
+                  or deals_closed_won > 0
+                then partner_id
+              end)::int                      as partners_active
+     from ${t("partner_summary")}
+     where ${where}`,
+  );
+  const r = rows[0] || {};
+  return {
+    total_leads: Number(r.total_leads || 0),
+    total_mql: Number(r.total_mql || 0),
+    total_sql: Number(r.total_sql || 0),
+    deals_won: Number(r.deals_won || 0),
+    deals_total: Number(r.deals_total || 0),
+    revenue: Number(r.revenue || 0),
+    partners_active: Number(r.partners_active || 0),
+  };
+}
+
 export async function getAllTimeTotals(): Promise<{
   total_leads: number;
   total_mql: number;
   total_sql: number;
   deals_won: number;
+  deals_total: number;
   revenue: number;
   partners_active: number;
 }> {
   const rows = await sql(
     `select
-        sum(total_leads)::bigint       as total_leads,
-        sum(leads_reached_mql)::bigint as total_mql,
-        sum(leads_reached_sql)::bigint as total_sql,
-        sum(deals_closed_won)::bigint  as deals_won,
-        sum(revenue_closed_won)::numeric as revenue,
-        count(distinct partner_id)::int  as partners_active
+        sum(total_leads)::bigint             as total_leads,
+        sum(leads_reached_mql)::bigint       as total_mql,
+        sum(leads_reached_sql)::bigint       as total_sql,
+        sum(deals_closed_won)::bigint        as deals_won,
+        sum(total_deals_created)::bigint     as deals_total,
+        sum(revenue_closed_won)::numeric     as revenue,
+        count(distinct case
+                when total_leads > 0
+                  or total_deals_created > 0
+                  or deals_closed_won > 0
+                then partner_id
+              end)::int                      as partners_active
      from ${t("partner_summary")}
      where period_type = 'all_time'`,
   );
@@ -77,6 +163,7 @@ export async function getAllTimeTotals(): Promise<{
     total_mql: Number(r.total_mql || 0),
     total_sql: Number(r.total_sql || 0),
     deals_won: Number(r.deals_won || 0),
+    deals_total: Number(r.deals_total || 0),
     revenue: Number(r.revenue || 0),
     partners_active: Number(r.partners_active || 0),
   };

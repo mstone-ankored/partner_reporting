@@ -7,7 +7,7 @@ import {
   getPartnerAllTime,
   getRepPerfForPartner,
 } from "@/lib/queries";
-import { KpiCard, PageHeader, Panel, fmtInt, fmtMoney, fmtPct } from "@/components/ui";
+import { KpiCard, PageHeader, Panel, fmtInt, fmtMonthYear, fmtMoney, fmtPct } from "@/components/ui";
 import { TrendLine } from "@/components/Chart";
 
 export const revalidate = 300;
@@ -52,14 +52,15 @@ export default async function PartnerDetailPage({
         <Panel title="Monthly">
           <TrendLine
             data={monthly.map((m) => ({
-              month: String(m.period_start_date).slice(0, 7),
+              month: fmtMonthYear(m.period_start_date),
               leads: m.total_leads,
               deals_won: m.deals_closed_won,
               revenue: Number(m.revenue_closed_won),
             }))}
             xKey="month"
+            yFormat="currency"
             series={[
-              { key: "revenue", label: "Revenue ($)", color: "#4f8cff" },
+              { key: "revenue", label: "Revenue", color: "#4f8cff" },
               { key: "leads", label: "Leads", color: "#21c07a" },
               { key: "deals_won", label: "Deals won", color: "#f5a524" },
             ]}

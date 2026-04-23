@@ -76,3 +76,11 @@ export function fmtPct(n: number | null | undefined, digits = 1): string {
   if (n == null || isNaN(n)) return "—";
   return `${(n * 100).toFixed(digits)}%`;
 }
+
+// Format a date-or-ISO-string as short month + 4-digit year ("Jan 2025").
+export function fmtMonthYear(d: string | Date | null | undefined): string {
+  if (d == null) return "—";
+  const date = typeof d === "string" ? new Date(d) : d;
+  if (isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" });
+}
