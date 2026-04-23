@@ -41,8 +41,15 @@ vars:
     - "partner"
     - "partner referral (partner)"
 
-  # Names of HubSpot forms that are treated as partner-referral forms even when
-  # the submission does not include an explicit partner_name field.
+  # Case-insensitive prefix: any form whose name starts with this value is
+  # treated as a partner-referral form. Designed for HubSpot form naming
+  # conventions like "Partner Referral - LeagueApps", "Partner Introduction",
+  # "Partner Lead Form", etc.
+  partner_form_name_prefix: "Partner"
+
+  # Exact-match fallback list for form names that don't start with the prefix
+  # above but should still be treated as partner-referral. Leave empty if the
+  # prefix rule is enough.
   partner_referral_form_names:
     - "Partner Referral"
     - "Partner Introduction"

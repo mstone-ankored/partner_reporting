@@ -123,7 +123,11 @@ select
     c.became_sql_at,
     c.became_opportunity_at,
     c.became_customer_at,
-    lf.reached_mql,
+    -- MQL here means: HubSpot lifecycle crossed into MQL *or* the lead came in
+    -- through a partner-referral form (fm.form_id set below). Partner forms
+    -- are treated as MQL-by-definition for partner reporting even when the
+    -- HubSpot lifecycle_stage hasn't been bumped yet.
+    coalesce(lf.reached_mql, false) or fm.form_id is not null  as reached_mql,
     lf.reached_sql,
     lf.is_disqualified,
 
