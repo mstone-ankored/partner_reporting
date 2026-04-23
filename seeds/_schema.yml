@@ -12,7 +12,11 @@ seeds:
       - name: partner_name
         tests: [not_null, unique]
       - name: partner_domain
-        tests: [not_null]
+        description: |
+          Primary email domain for inbound-email attribution (Method 4 in
+          int_partner_contact_attribution). Optional — partners without a
+          known domain still work fine via the other attribution methods
+          (HubSpot's referring_partner dropdown, form fields, etc.).
 
   - name: partner_total_customers
     description: |
