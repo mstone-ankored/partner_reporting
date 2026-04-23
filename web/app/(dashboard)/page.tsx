@@ -3,7 +3,7 @@ import { getMonthlySummary, getPartnerRankings, getTotals, PeriodFilter, PERIOD_
 import { KpiCard, Panel, PageHeader, fmtInt, fmtMonthYear, fmtMoney, fmtPct } from "@/components/ui";
 import { TrendLine, HBar } from "@/components/Chart";
 
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 const PERIODS: PeriodFilter[] = ["all", "ytd", "last_12m", "qtd", "mtd"];
 
