@@ -82,7 +82,7 @@ deal_level_attribution as (
     from deals d
     join deal_contacts dc
       on dc.deal_id = d.deal_id
-     and dc.is_primary
+     and dc.is_primary_contact
     left join partners p
       on lower(trim(d.referring_partner_deal)) = p.partner_name_key
     where d.is_partner_sourced_deal
