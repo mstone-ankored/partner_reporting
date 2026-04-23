@@ -270,6 +270,29 @@ DDL_STATEMENTS = [
         display_order int,
         primary key (pipeline_id, stage_id)
     )""",
+
+    # One-shot migration registry. Each entry runs once.
+    """create table if not exists hubspot._migrations (
+        migration_id text primary key,
+        applied_at timestamptz not null default now()
+    )""",
+
+    # Migration: after adding contact/deal partner-attribution columns, force a
+    # one-time full rescan so the new columns (referring_partner, deal_source,
+    # etc.) get backfilled for every existing row — otherwise the next sync
+    # would only refresh recently-modified records. Safe to keep in place:
+    # _migrations guards it against running more than once.
+    """do $$
+    begin
+        if not exists (
+            select 1 from hubspot._migrations
+            where migration_id = '2026_04_backfill_partner_attribution_columns'
+        ) then
+            delete from hubspot._sync_state where object_name in ('contact', 'deal');
+            insert into hubspot._migrations (migration_id)
+            values ('2026_04_backfill_partner_attribution_columns');
+        end if;
+    end $$""",
 ]
 
 
