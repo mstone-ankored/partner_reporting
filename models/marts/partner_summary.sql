@@ -146,11 +146,17 @@ period_totals as (
         sum(total_deals_created)    as all_partners_deals,
         sum(revenue_closed_won)     as all_partners_revenue
     from (
-        select lm.period_type, lm.period_start_date, lm.total_leads,
+        select lm.partner_id, lm.period_type, lm.period_start_date, lm.total_leads,
                dcm.total_deals_created, dclm.revenue_closed_won
         from lead_metrics lm
-        left join deal_create_metrics dcm using (partner_id, partner_name, period_type, period_start_date)
-        left join deal_close_metrics  dclm using (partner_id, partner_name, period_type, period_start_date)
+        left join deal_create_metrics dcm
+          on  dcm.partner_id   = lm.partner_id
+          and dcm.period_type  = lm.period_type
+          and dcm.period_start_date is not distinct from lm.period_start_date
+        left join deal_close_metrics dclm
+          on  dclm.partner_id   = lm.partner_id
+          and dclm.period_type  = lm.period_type
+          and dclm.period_start_date is not distinct from lm.period_start_date
     ) joined
     group by 1, 2
 ),
@@ -220,9 +226,28 @@ select
     lp.our_customer_count                                                    as our_customers_at_partner,
     lp.penetration_rate                                                      as partner_penetration_rate
 
+-- IS NOT DISTINCT FROM is NULL-safe equality: it treats NULL = NULL as true.
+-- Needed here because the `all_time` partition has period_start_date = NULL,
+-- and a plain equality join (or USING) would drop those rows' metrics.
 from partner_periods pp
-left join lead_metrics        lm   using (partner_id, partner_name, period_type, period_start_date)
-left join deal_create_metrics dcm  using (partner_id, partner_name, period_type, period_start_date)
-left join deal_close_metrics  dclm using (partner_id, partner_name, period_type, period_start_date)
-left join period_totals       pt   using (period_type, period_start_date)
-left join latest_penetration  lp   using (partner_id, partner_name)
+left join lead_metrics lm
+  on  lm.partner_id   = pp.partner_id
+  and lm.partner_name is not distinct from pp.partner_name
+  and lm.period_type  = pp.period_type
+  and lm.period_start_date is not distinct from pp.period_start_date
+left join deal_create_metrics dcm
+  on  dcm.partner_id   = pp.partner_id
+  and dcm.partner_name is not distinct from pp.partner_name
+  and dcm.period_type  = pp.period_type
+  and dcm.period_start_date is not distinct from pp.period_start_date
+left join deal_close_metrics dclm
+  on  dclm.partner_id   = pp.partner_id
+  and dclm.partner_name is not distinct from pp.partner_name
+  and dclm.period_type  = pp.period_type
+  and dclm.period_start_date is not distinct from pp.period_start_date
+left join period_totals pt
+  on  pt.period_type = pp.period_type
+  and pt.period_start_date is not distinct from pp.period_start_date
+left join latest_penetration lp
+  on  lp.partner_id   = pp.partner_id
+  and lp.partner_name is not distinct from pp.partner_name
