@@ -1,6 +1,12 @@
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
-import { Pool } from "@neondatabase/serverless";
+import { Pool, neonConfig } from "@neondatabase/serverless";
+import ws from "ws";
+
+// Node < 22 has no global WebSocket, and @neondatabase/serverless tunnels
+// Postgres over WebSocket. Supply the `ws` implementation so Pool can connect
+// when this script runs in CI / locally under node.
+neonConfig.webSocketConstructor = ws;
 
 async function main() {
   const url = process.env.DATABASE_URL;
