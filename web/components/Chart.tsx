@@ -19,21 +19,50 @@ export function TrendLine({
   series,
   height = 280,
   yFormat = "number",
+  yTickInterval,
 }: {
   data: Record<string, unknown>[];
   xKey: string;
   series: { key: string; label: string; color: string }[];
   height?: number;
   yFormat?: "number" | "currency";
+  yTickInterval?: number;
 }) {
   const tick = yFormat === "currency" ? currencyFmt : numberFmt;
+
+  // When a tick interval is provided, generate evenly-spaced ticks starting at
+  // `interval` (skipping 0) up to one step above the largest data value. This
+  // keeps the axis readable at small scale (e.g. 150k/300k/450k/600k) and
+  // extends cleanly as data grows.
+  let yTicks: number[] | undefined;
+  let yDomain: [number, number] | undefined;
+  if (yTickInterval && yTickInterval > 0) {
+    const values = data.flatMap((d) =>
+      series.map((s) => {
+        const v = d[s.key];
+        return typeof v === "number" && !isNaN(v) ? v : 0;
+      }),
+    );
+    const maxVal = values.length ? Math.max(0, ...values) : 0;
+    const steps = Math.max(1, Math.ceil(maxVal / yTickInterval) + 1);
+    yTicks = Array.from({ length: steps }, (_, i) => (i + 1) * yTickInterval);
+    yDomain = [0, yTicks[yTicks.length - 1]];
+  }
+
   return (
     <div style={{ width: "100%", height }}>
       <ResponsiveContainer>
         <LineChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
           <CartesianGrid stroke="#1f242b" />
           <XAxis dataKey={xKey} stroke="#8a94a3" fontSize={11} />
-          <YAxis stroke="#8a94a3" fontSize={11} tickFormatter={tick} width={72} />
+          <YAxis
+            stroke="#8a94a3"
+            fontSize={11}
+            tickFormatter={tick}
+            width={72}
+            ticks={yTicks}
+            domain={yDomain}
+          />
           <Tooltip
             contentStyle={{ background: "#111418", border: "1px solid #1f242b" }}
             formatter={(v: number) => tick(v)}

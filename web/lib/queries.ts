@@ -293,6 +293,81 @@ export async function getDealsForPartner(partnerId: string): Promise<PartnerDeal
   return rows as PartnerDealRow[];
 }
 
+export type PartnerFormSubmissionRow = {
+  submission_id: string;
+  submitted_at: string;
+  form_name: string | null;
+  contact_id: string | null;
+  contact_email: string | null;
+  contact_first_name: string | null;
+  contact_last_name: string | null;
+  company_name: string | null;
+  partner_name: string | null;
+  first_call_at: string | null;
+  deal_id: string | null;
+  deal_name: string | null;
+  deal_created_at: string | null;
+  deal_stage: string | null;
+  deal_status: string | null;
+  amount: number | null;
+  is_closed_won: boolean | null;
+  deal_closed_won_at: string | null;
+};
+
+// One row per partner-referral form submission, enriched with the earliest
+// sales call/meeting for the contact and their first HubSpot deal (if any), so
+// we can render per-submission velocity: form → call → deal.
+export async function getPartnerFormSubmissions(): Promise<PartnerFormSubmissionRow[]> {
+  const rows = await sql(
+    `with form_subs as (
+       select submission_id, contact_id, form_name, submitted_at
+       from ${t("stg_hubspot__form_submissions")}
+       where is_partner_referral_form = true
+     ),
+     first_call as (
+       select ec.contact_id, min(e.engaged_at) as first_call_at
+       from ${t("stg_hubspot__engagements")} e
+       join ${t("stg_hubspot__engagement_contacts")} ec using (engagement_id)
+       where e.engagement_type in ('meeting', 'call')
+       group by 1
+     ),
+     first_deal as (
+       select distinct on (contact_id)
+         contact_id, deal_id, deal_name, deal_created_at, deal_stage,
+         deal_status, amount, is_closed_won, deal_closed_won_at, partner_name
+       from ${t("partner_deals")}
+       where contact_id is not null
+       order by contact_id, deal_created_at asc nulls last
+     )
+     select
+       fs.submission_id,
+       fs.submitted_at,
+       fs.form_name,
+       fs.contact_id,
+       c.email                as contact_email,
+       c.first_name           as contact_first_name,
+       c.last_name            as contact_last_name,
+       c.company_name,
+       coalesce(fd.partner_name, pl.partner_name) as partner_name,
+       fc.first_call_at,
+       fd.deal_id,
+       fd.deal_name,
+       fd.deal_created_at,
+       fd.deal_stage,
+       fd.deal_status,
+       fd.amount,
+       fd.is_closed_won,
+       fd.deal_closed_won_at
+     from form_subs fs
+     left join ${t("stg_hubspot__contacts")} c on c.contact_id = fs.contact_id
+     left join first_call fc on fc.contact_id = fs.contact_id
+     left join first_deal fd on fd.contact_id = fs.contact_id
+     left join ${t("partner_leads")} pl on pl.contact_id = fs.contact_id
+     order by fs.submitted_at desc`,
+  );
+  return rows as PartnerFormSubmissionRow[];
+}
+
 export async function getPartnerList(): Promise<{ partner_id: string; partner_name: string }[]> {
   const rows = await sql(
     `select distinct partner_id, partner_name

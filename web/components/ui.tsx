@@ -84,3 +84,33 @@ export function fmtMonthYear(d: string | Date | null | undefined): string {
   if (isNaN(date.getTime())) return "—";
   return date.toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" });
 }
+
+// Short month + 2-digit year ("Jan 24"). Used for dense X-axis labels where
+// space matters.
+export function fmtMonthShortYear(d: string | Date | null | undefined): string {
+  if (d == null) return "—";
+  const date = typeof d === "string" ? new Date(d) : d;
+  if (isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString("en-US", { month: "short", year: "2-digit", timeZone: "UTC" });
+}
+
+export function fmtDateShort(d: string | Date | null | undefined): string {
+  if (d == null) return "—";
+  const date = typeof d === "string" ? new Date(d) : d;
+  if (isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "2-digit", timeZone: "UTC" });
+}
+
+export function fmtDaysBetween(
+  from: string | Date | null | undefined,
+  to: string | Date | null | undefined,
+): string {
+  if (from == null || to == null) return "—";
+  const a = typeof from === "string" ? new Date(from) : from;
+  const b = typeof to === "string" ? new Date(to) : to;
+  if (isNaN(a.getTime()) || isNaN(b.getTime())) return "—";
+  const days = (b.getTime() - a.getTime()) / 86_400_000;
+  if (days < 0) return "—";
+  if (days < 1) return `${(days * 24).toFixed(1)}h`;
+  return `${days.toFixed(1)}d`;
+}
