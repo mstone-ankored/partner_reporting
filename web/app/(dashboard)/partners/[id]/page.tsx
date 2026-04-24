@@ -45,7 +45,7 @@ export default async function PartnerDetailPage({
         <KpiCard label="Revenue" value={fmtMoney(Number(allTime.revenue_closed_won))} />
         <KpiCard label="Lead → won" value={fmtPct(allTime.lead_to_won_rate, 2)} />
         <KpiCard label="Deal → won" value={fmtPct(allTime.deal_to_won_rate)} />
-        <KpiCard label="Cycle (days)" value={allTime.avg_deal_cycle_days ? allTime.avg_deal_cycle_days.toFixed(0) : "—"} />
+        <KpiCard label="Cycle (days)" value={allTime.avg_deal_cycle_days != null ? Number(allTime.avg_deal_cycle_days).toFixed(0) : "—"} />
         <KpiCard label="Penetration" value={fmtPct((allTime.partner_penetration_rate || 0) / 100)} />
       </div>
 
