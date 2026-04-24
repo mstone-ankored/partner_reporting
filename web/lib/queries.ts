@@ -271,6 +271,7 @@ export type PartnerDealRow = {
   deal_closed_won_at: string | null;
   is_closed_won: boolean;
   is_closed: boolean;
+  source_type: string | null;
   time_to_close_days: number | null;
   sales_touches_total: number | null;
 };
@@ -280,7 +281,7 @@ export async function getDealsForPartner(partnerId: string): Promise<PartnerDeal
     `select deal_id, deal_name, deal_stage, deal_status, amount,
             deal_owner_name, deal_owner_email,
             deal_created_at, deal_close_date, deal_closed_won_at,
-            is_closed_won, is_closed,
+            is_closed_won, is_closed, source_type,
             time_to_close_days, sales_touches_total
      from ${t("partner_deals")}
      where partner_id = $1

@@ -6,6 +6,7 @@ import {
   getMonthlySummary,
   getPartnerAllTime,
   getRepPerfForPartner,
+  type PartnerDealRow,
 } from "@/lib/queries";
 import { KpiCard, PageHeader, Panel, fmtInt, fmtMonthYear, fmtMoney, fmtPct } from "@/components/ui";
 import { TrendLine } from "@/components/Chart";
@@ -132,75 +133,133 @@ export default async function PartnerDetailPage({
         </div>
       </Panel>
 
-      <Panel title={`Deals (${deals.length})`}>
-        {deals.length === 0 ? (
-          <div className="text-sm text-muted">No deals attributed to this partner yet.</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="text-muted text-xs uppercase">
-                <tr className="border-b border-border">
-                  <th className="text-left py-2 pr-3">Deal</th>
-                  <th className="text-left py-2 pr-3">Stage</th>
-                  <th className="text-left py-2 pr-3">Status</th>
-                  <th className="text-right py-2 pr-3">Amount</th>
-                  <th className="text-left py-2 pr-3">Owner</th>
-                  <th className="text-right py-2 pr-3">Created</th>
-                  <th className="text-right py-2 pr-3">Closed</th>
-                  <th className="text-right py-2 pr-3">Cycle (d)</th>
-                  <th className="text-right py-2 pr-3">Touches</th>
-                </tr>
-              </thead>
-              <tbody>
-                {deals.map((d) => (
-                  <tr key={d.deal_id} className="border-b border-border/50 hover:bg-bg">
-                    <td className="py-2 pr-3">{d.deal_name || "—"}</td>
-                    <td className="py-2 pr-3 text-xs">{d.deal_stage || "—"}</td>
-                    <td className="py-2 pr-3 text-xs">
-                      <span
-                        className={
-                          d.deal_status === "won"
-                            ? "text-good"
-                            : d.deal_status === "lost"
-                              ? "text-bad"
-                              : "text-muted"
-                        }
-                      >
-                        {d.deal_status || "—"}
-                      </span>
-                    </td>
-                    <td className="py-2 pr-3 text-right">
-                      {d.amount != null ? fmtMoney(Number(d.amount)) : "—"}
-                    </td>
-                    <td className="py-2 pr-3">
-                      {d.deal_owner_name || "—"}
-                      {d.deal_owner_email ? (
-                        <span className="ml-1 text-xs text-muted">{d.deal_owner_email}</span>
-                      ) : null}
-                    </td>
-                    <td className="py-2 pr-3 text-right text-xs">
-                      {d.deal_created_at ? String(d.deal_created_at).slice(0, 10) : "—"}
-                    </td>
-                    <td className="py-2 pr-3 text-right text-xs">
-                      {d.deal_closed_won_at
-                        ? String(d.deal_closed_won_at).slice(0, 10)
-                        : d.deal_close_date
-                          ? String(d.deal_close_date).slice(0, 10)
-                          : "—"}
-                    </td>
-                    <td className="py-2 pr-3 text-right">
-                      {d.time_to_close_days != null ? Number(d.time_to_close_days).toFixed(0) : "—"}
-                    </td>
-                    <td className="py-2 pr-3 text-right">
-                      {d.sales_touches_total != null ? fmtInt(Number(d.sales_touches_total)) : "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Panel>
+      <div className="grid grid-cols-1 gap-4">
+        <ClosedDealsTable deals={deals.filter((d) => d.is_closed)} />
+        <OpenDealsTable deals={deals.filter((d) => !d.is_closed)} />
+      </div>
     </>
+  );
+}
+
+function sourceLabel(source: string | null): string {
+  switch (source) {
+    case "form":
+      return "Form submission";
+    case "partner_email":
+      return "Partner email";
+    default:
+      return "—";
+  }
+}
+
+function ClosedDealsTable({ deals }: { deals: PartnerDealRow[] }) {
+  return (
+    <Panel title={`Closed deals (${deals.length})`}>
+      {deals.length === 0 ? (
+        <div className="text-sm text-muted">No closed deals yet.</div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="text-muted text-xs uppercase">
+              <tr className="border-b border-border">
+                <th className="text-left py-2 pr-3">Deal</th>
+                <th className="text-left py-2 pr-3">Status</th>
+                <th className="text-right py-2 pr-3">Amount</th>
+                <th className="text-right py-2 pr-3">Close date</th>
+                <th className="text-right py-2 pr-3">Cycle (d)</th>
+                <th className="text-left py-2 pr-3">Owner</th>
+                <th className="text-left py-2 pr-3">Source</th>
+              </tr>
+            </thead>
+            <tbody>
+              {deals.map((d) => (
+                <tr key={d.deal_id} className="border-b border-border/50 hover:bg-bg">
+                  <td className="py-2 pr-3">{d.deal_name || "—"}</td>
+                  <td className="py-2 pr-3 text-xs">
+                    <span
+                      className={
+                        d.deal_status === "won"
+                          ? "text-good"
+                          : d.deal_status === "lost"
+                            ? "text-bad"
+                            : "text-muted"
+                      }
+                    >
+                      {d.deal_status || "—"}
+                    </span>
+                  </td>
+                  <td className="py-2 pr-3 text-right">
+                    {d.amount != null ? fmtMoney(Number(d.amount)) : "—"}
+                  </td>
+                  <td className="py-2 pr-3 text-right text-xs">
+                    {d.deal_closed_won_at
+                      ? String(d.deal_closed_won_at).slice(0, 10)
+                      : d.deal_close_date
+                        ? String(d.deal_close_date).slice(0, 10)
+                        : "—"}
+                  </td>
+                  <td className="py-2 pr-3 text-right">
+                    {d.time_to_close_days != null ? Number(d.time_to_close_days).toFixed(0) : "—"}
+                  </td>
+                  <td className="py-2 pr-3">
+                    {d.deal_owner_name || "—"}
+                    {d.deal_owner_email ? (
+                      <span className="ml-1 text-xs text-muted">{d.deal_owner_email}</span>
+                    ) : null}
+                  </td>
+                  <td className="py-2 pr-3 text-xs">{sourceLabel(d.source_type)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+function OpenDealsTable({ deals }: { deals: PartnerDealRow[] }) {
+  return (
+    <Panel title={`Open deals (${deals.length})`}>
+      {deals.length === 0 ? (
+        <div className="text-sm text-muted">No open deals for this partner.</div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="text-muted text-xs uppercase">
+              <tr className="border-b border-border">
+                <th className="text-left py-2 pr-3">Deal</th>
+                <th className="text-left py-2 pr-3">Stage</th>
+                <th className="text-left py-2 pr-3">Source</th>
+                <th className="text-right py-2 pr-3">Amount</th>
+                <th className="text-right py-2 pr-3">Created</th>
+                <th className="text-left py-2 pr-3">Owner</th>
+              </tr>
+            </thead>
+            <tbody>
+              {deals.map((d) => (
+                <tr key={d.deal_id} className="border-b border-border/50 hover:bg-bg">
+                  <td className="py-2 pr-3">{d.deal_name || "—"}</td>
+                  <td className="py-2 pr-3 text-xs">{d.deal_stage || "—"}</td>
+                  <td className="py-2 pr-3 text-xs">{sourceLabel(d.source_type)}</td>
+                  <td className="py-2 pr-3 text-right">
+                    {d.amount != null ? fmtMoney(Number(d.amount)) : "—"}
+                  </td>
+                  <td className="py-2 pr-3 text-right text-xs">
+                    {d.deal_created_at ? String(d.deal_created_at).slice(0, 10) : "—"}
+                  </td>
+                  <td className="py-2 pr-3">
+                    {d.deal_owner_name || "—"}
+                    {d.deal_owner_email ? (
+                      <span className="ml-1 text-xs text-muted">{d.deal_owner_email}</span>
+                    ) : null}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Panel>
   );
 }
