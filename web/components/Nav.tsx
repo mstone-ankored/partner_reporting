@@ -11,11 +11,13 @@ const links = [
 ];
 
 export function Nav({ user }: { user?: { email?: string | null; name?: string | null } }) {
+  const sha = process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? "local";
   return (
     <aside className="w-56 border-r border-border bg-panel min-h-screen flex flex-col">
       <div className="p-4 border-b border-border">
         <div className="text-sm font-semibold">Partner Reporting</div>
         <div className="text-xs text-muted">{user?.email}</div>
+        <div className="text-[10px] text-muted/70 mt-1">build {sha}</div>
       </div>
       <nav className="flex-1 p-2 space-y-0.5">
         {links.map((l) => (

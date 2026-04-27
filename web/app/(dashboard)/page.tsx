@@ -36,12 +36,16 @@ export default async function OverviewPage({
   searchParams: { period?: string };
 }) {
   const period = normalizePeriod(searchParams.period);
-  const [totals, monthly, rankings, formSubmissions] = await Promise.all([
+  const [totals, monthly, rankings, formSubmissionsRaw] = await Promise.all([
     getTotals(period),
     getMonthlySummary(),
     getPartnerRankings(),
-    getPartnerFormSubmissions(),
+    getPartnerFormSubmissions().catch((e) => {
+      console.error("[overview] getPartnerFormSubmissions failed", e);
+      return [] as PartnerFormSubmissionRow[];
+    }),
   ]);
+  const formSubmissions = formSubmissionsRaw;
 
   const topByRevenue = rankings
     .slice()
